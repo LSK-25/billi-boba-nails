@@ -179,14 +179,17 @@ export default function CheckoutClient() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Hand photos</p>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#756778]">
-                  Upload clear left and right hand photos. The customer order will be confirmed first; production moves forward after photo review.
+                  Before uploading, open the photo guide once. Use a clear top-view photo and place a ₹10 coin beside your nails as the size reference.
                 </p>
               </div>
-              <Link href="/photo-guide" className="btn-secondary px-4 py-2 text-xs">Guide</Link>
+              <Link href="/photo-guide" className="btn-primary px-4 py-2 text-xs">View photo guide</Link>
+            </div>
+            <div className="mt-5 rounded-[1.35rem] border border-[#d8ccff66] bg-[linear-gradient(135deg,rgba(255,232,245,.62),rgba(238,230,255,.72))] p-4 text-sm font-semibold leading-6 text-[#66566c] backdrop-blur-2xl">
+              Photo checklist: full hand visible, taken directly from above, good lighting, no blur, and one ₹10 coin placed beside the nails.
             </div>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <PhotoUploadBox label="Left hand photo" preview={leftHand} onChange={setLeftHand} required />
-              <PhotoUploadBox label="Right hand photo" preview={rightHand} onChange={setRightHand} required />
+              <PhotoUploadBox label="Left hand photo with coin" preview={leftHand} onChange={setLeftHand} required />
+              <PhotoUploadBox label="Right hand photo with coin" preview={rightHand} onChange={setRightHand} required />
             </div>
             <div className="mt-4">
               <PhotoUploadBox label="Optional length reference" preview={lengthReference} onChange={setLengthReference} />
@@ -195,7 +198,7 @@ export default function CheckoutClient() {
 
           <label className="flex items-start gap-3 text-sm font-semibold leading-6 text-[#6f6372]">
             <input className="mt-1" type="checkbox" required />
-            I confirm my hand photos are clear, both hands are visible and the photos follow the guide.
+            I confirm my hand photos are clear, both hands are visible and the photos follow the coin-reference guide.
           </label>
 
           <button type="submit" className="btn-primary" disabled={isSubmitting}>

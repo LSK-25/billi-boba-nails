@@ -2,7 +2,7 @@ const guideCards = [
   ['01', 'Place your hand flat', 'Use a plain surface and keep fingers naturally relaxed.'],
   ['02', 'Shoot from above', 'Hold the phone directly over your hand, not from a side angle.'],
   ['03', 'Use clear light', 'Avoid shadows, blur, portrait mode and heavy filters.'],
-  ['04', 'Add a ruler reference', 'Keep ruler markings visible beside your nails when possible.'],
+  ['04', 'Add a coin reference', 'Place one ₹10 coin beside your nails so the studio has a familiar size reference.'],
 ];
 
 export default function PhotoGuidePage() {
@@ -28,7 +28,7 @@ export default function PhotoGuidePage() {
             <div>
               <p className="text-5xl">✓</p>
               <h2 className="mt-4 font-display text-4xl font-black tracking-[-0.06em]">Correct example</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#756778]">Hand fully visible, taken from above, good lighting, ruler markings clear.</p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#756778]">Hand fully visible, taken from above, good lighting, ₹10 coin clearly visible.</p>
             </div>
           </div>
         </div>
@@ -37,7 +37,7 @@ export default function PhotoGuidePage() {
             <div>
               <p className="text-5xl">×</p>
               <h2 className="mt-4 font-display text-4xl font-black tracking-[-0.06em]">Wrong example</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#756778]">Blurry, cropped fingers, side angle, dark shadows or no size reference.</p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#756778]">Blurry, cropped fingers, side angle, dark shadows or no coin reference.</p>
             </div>
           </div>
         </div>

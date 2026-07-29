@@ -475,3 +475,65 @@ h1, h2, h3, .font-display { font-family: Georgia, 'Times New Roman', serif; lett
   .pill { font-size: .62rem; letter-spacing: .12em; }
   .btn-primary, .btn-secondary, .btn-ghost { width: 100%; }
 }
+
+
+/* Mobile polish: keep pages from sideways shifting on phones. */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.mobile-shop-toolbar {
+  border: 1px solid rgba(255, 255, 255, .56);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.54), rgba(255,235,246,.42) 46%, rgba(237,229,255,.5)),
+    radial-gradient(circle at 15% 0%, rgba(255,212,226,.35), transparent 10rem);
+  box-shadow:
+    0 16px 46px rgba(120,84,132,.11),
+    inset 0 1px 0 rgba(255,255,255,.82);
+  backdrop-filter: blur(22px) saturate(1.42);
+  -webkit-backdrop-filter: blur(22px) saturate(1.42);
+  border-radius: 999px;
+  padding: .65rem .7rem .65rem 1rem;
+}
+
+.site-footer a {
+  transition: color 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.site-footer a:hover {
+  color: #fff;
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    width: min(100% - 22px, 1180px);
+  }
+
+  h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .pill {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.45;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    min-height: 2.85rem;
+  }
+}
