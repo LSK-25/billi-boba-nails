@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useCart } from '@/components/CartProvider';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -11,6 +12,7 @@ const navItems = [
   { href: '/how-to-order', label: 'How it works' },
   { href: '/photo-guide', label: 'Photo guide' },
   { href: '/track-order', label: 'Track order' },
+  { href: '/account/orders', label: 'My orders' },
 ];
 
 function CartIcon() {
@@ -48,6 +50,7 @@ function CartIcon() {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { count } = useCart();
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
   const [activePill, setActivePill] = useState({ left: 4, width: 72, ready: false });
@@ -108,7 +111,7 @@ export default function Navbar() {
                 data-active={isActive}
                 className={cn(
                   'relative z-10 rounded-full px-4 py-2 text-sm font-bold text-[#5f5368] transition duration-300 hover:text-[#6646ad]',
-                  isActive && 'text-[#6d3fb1]'
+                  isActive && 'text-[#6d3fb1]',
                 )}
               >
                 {item.label}
@@ -121,13 +124,18 @@ export default function Navbar() {
           <Link
             href="/cart"
             className={cn(
-              'group grid h-12 w-12 place-items-center rounded-full border border-white/55 bg-white/42 text-[#33233b] shadow-[0_14px_42px_rgba(139,101,190,.13),inset_0_1px_0_rgba(255,255,255,.78)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:bg-white/78 hover:text-[#7c58d7] hover:shadow-[0_18px_52px_rgba(126,91,183,.2)]',
-              pathname === '/cart' && 'border-[#d8ccff] bg-[#f8f3ff]/80 text-[#7c58d7]'
+              'group relative grid h-12 w-12 place-items-center rounded-full border border-white/55 bg-white/42 text-[#33233b] shadow-[0_14px_42px_rgba(139,101,190,.13),inset_0_1px_0_rgba(255,255,255,.78)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:bg-white/78 hover:text-[#7c58d7] hover:shadow-[0_18px_52px_rgba(126,91,183,.2)]',
+              pathname === '/cart' && 'border-[#d8ccff] bg-[#f8f3ff]/80 text-[#7c58d7]',
             )}
-            aria-label="Cart"
+            aria-label={`Cart with ${count} item${count === 1 ? '' : 's'}`}
             title="Cart"
           >
             <CartIcon />
+            {count > 0 && (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-gradient-to-br from-[#ee77a6] to-[#8c6fe8] px-1 text-[0.65rem] font-black text-white shadow-[0_10px_24px_rgba(126,91,183,.25)]">
+                {count}
+              </span>
+            )}
           </Link>
           <Link href="/login" className="btn-primary px-4 py-2 text-sm">Login</Link>
         </div>
@@ -155,7 +163,9 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <Link href="/cart" onClick={() => setOpen(false)} className="btn-secondary py-3 text-sm" aria-label="Cart"><CartIcon /> Cart</Link>
+              <Link href="/cart" onClick={() => setOpen(false)} className="btn-secondary relative py-3 text-sm" aria-label="Cart">
+                <CartIcon /> Cart {count > 0 && <span className="ml-1 rounded-full bg-[#eee8ff] px-2 py-0.5 text-xs text-[#6d3fb1]">{count}</span>}
+              </Link>
               <Link href="/login" onClick={() => setOpen(false)} className="btn-primary py-3 text-sm">Login</Link>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import SetOrderPanel from '@/components/SetOrderPanel';
 import { nailSets } from '@/lib/mock-data';
 import { formatPrice } from '@/lib/utils';
 
@@ -16,7 +17,10 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
   return (
     <section className="page-shell grid gap-10 py-14 lg:grid-cols-[1fr_.82fr]">
       <div className="liquid-glass rounded-[2.4rem] p-4">
-        <div className="relative min-h-[620px] overflow-hidden rounded-[2rem] border border-white/70" style={{ background: `linear-gradient(135deg, ${set.tone}, #ffffff 52%, ${set.accentTone})` }}>
+        <div
+          className="relative min-h-[620px] overflow-hidden rounded-[2rem] border border-white/70"
+          style={{ background: `linear-gradient(135deg, ${set.tone}, #ffffff 52%, ${set.accentTone})` }}
+        >
           <div className="noise-overlay" />
           <div className="absolute left-6 top-6 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur">{set.code}</div>
           <div className="absolute inset-0 grid place-items-center">
@@ -28,7 +32,12 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
             </div>
           </div>
           <div className="absolute bottom-6 left-6 right-6 grid gap-3 rounded-[1.6rem] border border-white/70 bg-white/42 p-5 backdrop-blur-xl md:grid-cols-3">
-            {[set.length, set.shape, set.finish].map((item) => <div key={item}><p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#8f7492]">Detail</p><p className="font-black text-[#2c2131]">{item}</p></div>)}
+            {[set.length, set.shape, set.finish].map((item) => (
+              <div key={item}>
+                <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#8f7492]">Detail</p>
+                <p className="font-black text-[#2c2131]">{item}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -51,15 +60,13 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
             </div>
           ))}
         </div>
-        <div className="mt-8 rounded-[2rem] border border-[#4a314e1c] bg-white/48 p-5 backdrop-blur">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Preferred length</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {['Short', 'Medium', 'Long', 'Same as shown'].map((length) => <span key={length} className="rounded-full border border-[#4a314e1c] bg-white/58 px-4 py-2 text-xs font-black text-[#5f5263]">{length}</span>)}
-          </div>
-        </div>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link href="/cart" className="btn-primary">Add to cart</Link>
-          <Link href="/checkout" className="btn-secondary">Order this set</Link>
+        <SetOrderPanel set={set} />
+        <div className="mt-6 rounded-[1.6rem] border border-[#4a314e1c] bg-white/40 p-5 backdrop-blur">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">What happens next</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#756778]">
+            At checkout, customers upload left and right hand photos. After payment, the order is confirmed and production starts after photo review.
+          </p>
+          <Link href="/how-to-order" className="mt-4 inline-flex text-sm font-black text-[#6d3fb1]">Read the process →</Link>
         </div>
       </div>
     </section>

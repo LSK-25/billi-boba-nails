@@ -1,9 +1,11 @@
+export type PreferredLength = 'Short' | 'Medium' | 'Long' | 'Same as shown';
+
 export type NailSet = {
   id: string;
   code: string;
   name: string;
   category: string;
-  length: string;
+  length: PreferredLength;
   shape: string;
   finish: string;
   price: number;
@@ -15,6 +17,18 @@ export type NailSet = {
   productionTime: string;
   featured: boolean;
   archived?: boolean;
+};
+
+export type CartItem = {
+  cartId: string;
+  setId: string;
+  length: PreferredLength;
+  quantity: number;
+  addedAt: string;
+};
+
+export type CartLine = CartItem & {
+  set: NailSet;
 };
 
 export type OrderStatus =
