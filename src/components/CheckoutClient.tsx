@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useCart } from '@/components/CartProvider';
 import { makeOrderId, makeTrackingId, savePreviewOrder } from '@/lib/preview-orders';
+import type { StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 import type { CartLine } from '@/types';
 
