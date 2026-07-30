@@ -1,40 +1,88 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { getRoleHome, type UserRole } from '@/lib/demo-auth';
+import { getRoleHome } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
-const roleOptions: { role: UserRole; title: string; text: string }[] = [
-  { role: 'customer', title: 'Customer', text: 'Orders, tracking and photo requests.' },
-  { role: 'admin', title: 'Admin', text: 'Products, orders and studio workflow.' },
-];
+type AuthMode = 'login' | 'signup';
 
-export default function LoginPage() {
+function LoginPanel() {
   const router = useRouter();
-  const [role, setRole] = useState<UserRole>('customer');
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next');
+  const supabase = useMemo(() => createClient(), []);
+  const { refreshUser } = useAuth();
+
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const { loginAsDemo, loginWithEmail } = useAuth();
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('role') === 'admin') setRole('admin');
-  }, []);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError('');
+    setMessage('');
 
-  const roleCopy = useMemo(() => roleOptions.find((item) => item.role === role) ?? roleOptions[0], [role]);
+    try {
+      if (mode === 'signup') {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
 
-  function handleDemoLogin(selectedRole = role) {
-    const user = loginAsDemo(selectedRole);
-    router.push(getRoleHome(user.role));
+        if (signUpError) throw signUpError;
+
+        if (!data.session) {
+          setMessage('Account created. Check your email to confirm your account, then log in.');
+          return;
+        }
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+      }
+
+      const nextUser = await refreshUser();
+      router.push(next || getRoleHome(nextUser?.role ?? 'customer'));
+      router.refresh();
+    } catch (caughtError) {
+      const authError = caughtError instanceof Error ? caughtError.message : 'Something went wrong. Please try again.';
+      setError(authError);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  function handleEmailLogin() {
-    const user = loginWithEmail({ role, email, name });
-    router.push(getRoleHome(user.role));
+  async function handlePasswordReset() {
+    setError('');
+    setMessage('');
+
+    if (!email.trim()) {
+      setError('Enter your email first, then tap forgot password.');
+      return;
+    }
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    });
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setMessage('Password reset link sent. Check your email.');
   }
 
   return (
@@ -42,22 +90,20 @@ export default function LoginPage() {
       <div className="reveal">
         <span className="pill">Secure studio access</span>
         <h1 className="mt-6 font-display text-5xl font-black leading-[0.94] tracking-[-0.07em] md:text-7xl">
-          Login for customers and studio.
+          One login for customers and studio.
         </h1>
         <p className="mt-5 max-w-xl text-base leading-8 text-[#756778]">
-          This milestone adds the account structure. For now it uses a safe local demo login; next we will connect Supabase Auth for real accounts.
+          Customers create normal accounts. The private admin account is assigned from the database, so admin access is never chosen publicly on the website.
         </p>
         <div className="mt-8 grid gap-3 sm:max-w-xl sm:grid-cols-2">
-          {roleOptions.map((option) => (
-            <button
-              key={option.role}
-              type="button"
-              onClick={() => handleDemoLogin(option.role)}
-              className="liquid-glass rounded-[1.6rem] p-5 text-left transition hover:-translate-y-1 hover:bg-white/70"
-            >
-              <p className="font-display text-3xl font-black tracking-[-0.06em]">{option.title}</p>
-              <p className="mt-2 text-sm font-semibold leading-6 text-[#756778]">Continue demo login →</p>
-            </button>
+          {[
+            ['Customers', 'Orders, checkout, tracking and future photo requests.'],
+            ['Studio admin', 'Products, orders and workflow only for approved admin email.'],
+          ].map(([title, text]) => (
+            <div key={title} className="liquid-glass rounded-[1.6rem] p-5">
+              <p className="font-display text-3xl font-black tracking-[-0.06em]">{title}</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[#756778]">{text}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -72,59 +118,81 @@ export default function LoginPage() {
               <div className="grid place-items-center">
                 <Image src="/images/billi-boba-logo.jpg" alt="BILLi&BoBA NAILS logo" width={260} height={260} className="float-slow h-64 w-64 rounded-full object-cover shadow-[0_30px_80px_rgba(127,80,120,.2)]" />
               </div>
-              <p className="rounded-[1.4rem] border border-white/60 bg-white/45 p-4 text-sm font-bold leading-6 text-[#4f4254] backdrop-blur">
-                Later, Supabase will protect sessions with secure cookies and role-based access for customers and admin.
+              <p className="rounded-[1.4rem] border border-white/60 bg-white/45 p-4 text-sm font-semibold leading-6 text-[#5f5263] backdrop-blur-xl">
+                Real authentication is now connected through Supabase. Admin access is controlled by the profile role, not a visible button.
               </p>
             </div>
           </div>
 
-          <div className="p-6 md:p-9">
-            <div className="mb-8 flex items-center gap-3">
-              <div className="liquid-glass grid h-12 w-12 place-items-center rounded-2xl"><span className="font-display font-black tracking-[-0.08em]">B&amp;B</span></div>
-              <div>
-                <h2 className="font-display text-4xl font-black tracking-[-0.06em]">Welcome back</h2>
-                <p className="text-sm font-semibold text-[#8a7a8e]">{roleCopy.text}</p>
-              </div>
-            </div>
-
-            <div className="mb-5 grid grid-cols-2 gap-2 rounded-[1.4rem] border border-white/60 bg-white/38 p-1.5 backdrop-blur-xl">
-              {roleOptions.map((option) => (
+          <div className="p-6 md:p-8 lg:p-10">
+            <div className="mb-7 flex rounded-full border border-white/70 bg-white/45 p-1 backdrop-blur-xl">
+              {(['login', 'signup'] as AuthMode[]).map((item) => (
                 <button
-                  key={option.role}
+                  key={item}
                   type="button"
-                  onClick={() => setRole(option.role)}
-                  className={cn(
-                    'rounded-[1.05rem] px-4 py-3 text-sm font-black transition',
-                    role === option.role ? 'bg-gradient-to-br from-[#ffe6f2] to-[#eee4ff] text-[#744eb6] shadow-[inset_0_1px_0_rgba(255,255,255,.75)]' : 'text-[#7b7080] hover:bg-white/55',
-                  )}
+                  onClick={() => {
+                    setMode(item);
+                    setError('');
+                    setMessage('');
+                  }}
+                  className={cn('flex-1 rounded-full px-4 py-3 text-sm font-black capitalize transition', mode === item ? 'bg-gradient-to-r from-[#f48ab7] to-[#9173ee] text-white shadow-[0_16px_36px_rgba(145,115,238,.2)]' : 'text-[#6f6372] hover:bg-white/55')}
                 >
-                  {option.title}
+                  {item === 'login' ? 'Login' : 'Create account'}
                 </button>
               ))}
             </div>
 
-            <form className="grid gap-4" onSubmit={(event) => event.preventDefault()}>
+            <h2 className="font-display text-4xl font-black tracking-[-0.07em] md:text-5xl">
+              {mode === 'login' ? 'Welcome back.' : 'Create your account.'}
+            </h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-[#756778]">
+              {mode === 'login'
+                ? 'Use the email and password connected to your BILLi&BoBA account.'
+                : 'New accounts are customers by default. Admin role is assigned privately by the studio owner.'}
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-7 grid gap-4">
+              {mode === 'signup' && (
+                <label className="grid gap-2 text-sm font-bold text-[#4f4254]">
+                  Full name
+                  <input className="input-field" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Your name" autoComplete="name" required />
+                </label>
+              )}
               <label className="grid gap-2 text-sm font-bold text-[#4f4254]">
-                Name
-                <input className="input-field" value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-[#4f4254]">
-                Email address
-                <input className="input-field" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+                Email
+                <input className="input-field" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required />
               </label>
               <label className="grid gap-2 text-sm font-bold text-[#4f4254]">
                 Password
-                <input className="input-field" type="password" placeholder="Demo only for now" />
+                <input className="input-field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minimum 6 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} required />
               </label>
-              <button type="button" onClick={handleEmailLogin} className="btn-primary mt-2">Login as {roleCopy.title}</button>
-              <button type="button" onClick={() => handleDemoLogin()} className="btn-secondary">Use quick demo access</button>
+
+              {error && <p className="rounded-[1.2rem] border border-[#ffb3c966] bg-[#fff3f7]/80 p-3 text-xs font-bold leading-5 text-[#a13f66]">{error}</p>}
+              {message && <p className="rounded-[1.2rem] border border-[#d8ccff66] bg-white/55 p-3 text-xs font-bold leading-5 text-[#6d5a78]">{message}</p>}
+
+              <button type="submit" className="btn-primary mt-2" disabled={submitting}>
+                {submitting ? 'Please wait…' : mode === 'login' ? 'Login' : 'Create account'}
+              </button>
+              {mode === 'login' && (
+                <button type="button" onClick={handlePasswordReset} className="btn-secondary">
+                  Forgot password
+                </button>
+              )}
               <p className="rounded-[1.2rem] border border-[#d8ccff66] bg-white/45 p-3 text-xs font-bold leading-5 text-[#786a7c]">
-                Current build stores the session only in your browser for preview. Real signup, passwords and email verification come with Supabase.
+                There is no public admin signup. Your admin role is set inside Supabase after your account is created.
               </p>
             </form>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<section className="page-shell py-14"><div className="liquid-glass rounded-[2rem] p-8">Loading login…</div></section>}>
+      <LoginPanel />
+    </Suspense>
   );
 }
