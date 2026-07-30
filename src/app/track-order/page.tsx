@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { findPreviewOrder, formatPreviewDate, type StoredOrder } from '@/lib/preview-orders';
+import { findTrackedOrder } from '@/lib/commerce-orders';
+import { formatPreviewDate, readLatestOrder, type StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 
 const statuses = ['Order confirmed', 'Photos under review', 'In production', 'Quality check', 'Ready to dispatch', 'Dispatched', 'Delivered'];
@@ -18,39 +19,54 @@ export default function TrackOrderPage() {
   const [order, setOrder] = useState<StoredOrder | null>(null);
   const [message, setMessage] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const orderParam = params.get('order') ?? '';
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const orderParam = params.get('order') ?? '';
+      const latestOrder = readLatestOrder();
 
-    if (!orderParam) return;
+      if (!orderParam) return;
 
-    setIdentifier(orderParam);
-    const foundOrder = findPreviewOrder(orderParam);
-    if (foundOrder) {
-      setOrder(foundOrder);
-      setContact(foundOrder.customer?.email || foundOrder.customer?.phone || '');
-      setHasSearched(true);
-      setMessage('');
-    }
+      setIdentifier(orderParam);
+
+      if (latestOrder?.orderId === orderParam || latestOrder?.trackingId === orderParam) {
+        setOrder(latestOrder);
+        setContact(latestOrder.customer?.email || latestOrder.customer?.phone || '');
+        setHasSearched(true);
+        setMessage('');
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const activeIndex = useMemo(() => getStatusIndex(order?.status), [order]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setHasSearched(true);
-
-    const foundOrder = findPreviewOrder(identifier, contact);
-
-    if (!foundOrder) {
-      setOrder(null);
-      setMessage('No preview order found for those details. Try the exact Order ID or Tracking ID shown on the confirmation page.');
-      return;
-    }
-
-    setOrder(foundOrder);
+    setIsSearching(true);
     setMessage('');
+
+    try {
+      const foundOrder = await findTrackedOrder(identifier, contact);
+
+      if (!foundOrder) {
+        setOrder(null);
+        setMessage('No order found for those details. Enter the exact Order ID or Tracking ID and the matching email or phone number.');
+        return;
+      }
+
+      setOrder(foundOrder);
+    } catch (caughtError) {
+      const errorMessage = caughtError instanceof Error ? caughtError.message : 'Could not search order right now.';
+      setOrder(null);
+      setMessage(errorMessage);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   return (
@@ -58,7 +74,7 @@ export default function TrackOrderPage() {
       <span className="pill">Track order</span>
       <h1 className="mt-5 font-display text-5xl font-black tracking-[-0.07em] md:text-7xl">Track your set</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-[#756778]">
-        Enter the Order ID or Tracking ID from your confirmation page. This preview searches orders saved in your browser.
+        Enter the Order ID or Tracking ID from your confirmation page. This now checks the Supabase order database.
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[.85fr_1.15fr]">
@@ -74,11 +90,14 @@ export default function TrackOrderPage() {
             />
             <input
               className="input-field"
-              placeholder="Email or phone"
+              placeholder="Email or phone used at checkout"
               value={contact}
               onChange={(event) => setContact(event.target.value)}
+              required
             />
-            <button type="submit" className="btn-primary">Track order</button>
+            <button type="submit" className="btn-primary" disabled={isSearching}>
+              {isSearching ? 'Searching...' : 'Track order'}
+            </button>
           </form>
 
           {message && (
@@ -88,7 +107,7 @@ export default function TrackOrderPage() {
           )}
 
           <div className="mt-5 rounded-[1.4rem] border border-white/65 bg-white/42 p-4 text-xs font-semibold leading-5 text-[#8a7a8e] backdrop-blur-xl">
-            Tip: after checkout, click <strong>My orders</strong> to copy the preview Order ID if you forget it.
+            Tip: after checkout, open <strong>My orders</strong> to copy your Order ID or Tracking ID.
           </div>
         </div>
 
@@ -97,7 +116,7 @@ export default function TrackOrderPage() {
             <>
               <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Current preview status</p>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Current status</p>
                   <h2 className="mt-3 font-display text-4xl font-black tracking-[-0.06em]">{order.status}</h2>
                   <p className="mt-2 text-sm font-semibold text-[#8a7a8e]">Placed on {formatPreviewDate(order.createdAt)}</p>
                 </div>
@@ -137,7 +156,7 @@ export default function TrackOrderPage() {
                       <div>
                         <p className="font-black text-[#3b3040]">{status}</p>
                         <p className="mt-1 text-sm text-[#756778]">
-                          {isCurrent ? 'Current step in this preview order.' : isDone ? 'Completed.' : 'Upcoming step.'}
+                          {isCurrent ? 'Current step for this order.' : isDone ? 'Completed.' : 'Upcoming step.'}
                         </p>
                       </div>
                     </div>
@@ -168,7 +187,7 @@ export default function TrackOrderPage() {
                   {hasSearched ? 'Order not found.' : 'Status will appear here.'}
                 </h2>
                 <p className="mx-auto mt-3 max-w-md text-sm font-semibold leading-7 text-[#8a7a8e]">
-                  Complete a checkout preview first, then use the generated Order ID or Tracking ID to see the timeline here.
+                  Complete checkout first, then use the generated Order ID or Tracking ID to see the timeline here.
                 </p>
                 <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
                   <Link href="/account/orders" className="btn-secondary">My orders</Link>

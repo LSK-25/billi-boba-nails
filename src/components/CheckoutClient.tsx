@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
-import { makeOrderId, makeTrackingId, savePreviewOrder } from '@/lib/preview-orders';
+import { createCheckoutOrder } from '@/lib/commerce-orders';
+import { savePreviewOrder } from '@/lib/preview-orders';
 import type { StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 import type { CartLine } from '@/types';
@@ -14,7 +15,6 @@ type PhotoPreview = {
   fileName: string;
   dataUrl: string;
 };
-
 
 function readPhoto(event: ChangeEvent<HTMLInputElement>, onReady: (preview: PhotoPreview | null) => void) {
   const file = event.target.files?.[0];
@@ -61,7 +61,7 @@ function PhotoUploadBox({
       ) : (
         <div className="grid h-full min-h-[158px] place-items-center text-center">
           <div>
-            <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f0e9ff] text-xl text-[#6d3fb1] transition group-hover:scale-105">＋</span>
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f0e9ff] text-xl text-[#6d3fb1] transition group-hover:scale-105">+</span>
             <p className="mt-3 text-sm font-black text-[#3b3040]">{label}</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-[#8a7a8e]">Tap to upload image</p>
           </div>
@@ -79,6 +79,7 @@ export default function CheckoutClient() {
   const [rightHand, setRightHand] = useState<PhotoPreview | null>(null);
   const [lengthReference, setLengthReference] = useState<PhotoPreview | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [checkoutSnapshot, setCheckoutSnapshot] = useState<CartLine[] | null>(null);
 
   const displayLines = checkoutSnapshot ?? lines;
@@ -88,52 +89,79 @@ export default function CheckoutClient() {
 
   const itemCount = useMemo(() => displayLines.reduce((sum, item) => sum + item.quantity, 0), [displayLines]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (displayLines.length === 0 || isSubmitting) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     setCheckoutSnapshot(lines);
 
     const formData = new FormData(event.currentTarget);
+
     const customerName = String(formData.get('name') ?? '').trim();
     const customerPhone = String(formData.get('phone') ?? '').trim();
     const customerEmail = String(formData.get('email') ?? '').trim();
-    const customerAddress = String(formData.get('address') ?? '').trim();
 
-    const orderId = makeOrderId();
-    const trackingId = makeTrackingId();
-    const previewOrder: StoredOrder = {
-      orderId,
-      trackingId,
-      createdAt: new Date().toISOString(),
-      status: 'Order confirmed',
-      accountEmail: user?.email?.trim().toLowerCase() || customerEmail.toLowerCase(),
-      itemCount,
-      subtotal: displaySubtotal,
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress,
-      },
-      items: displayLines.map((item) => ({
-        cartId: item.cartId,
-        code: item.set.code,
-        name: item.set.name,
-        length: item.length,
-        quantity: item.quantity,
-        price: item.set.price,
-      })),
-    };
+    const addressLine1 = String(formData.get('addressLine1') ?? '').trim();
+    const addressLine2 = String(formData.get('addressLine2') ?? '').trim();
+    const city = String(formData.get('city') ?? '').trim();
+    const state = String(formData.get('state') ?? '').trim();
+    const postalCode = String(formData.get('postalCode') ?? '').trim();
+    const customerNote = String(formData.get('customerNote') ?? '').trim();
 
-    savePreviewOrder(previewOrder);
-    router.push(`/order-confirmed?order=${encodeURIComponent(orderId)}`);
+    try {
+      const createdOrder = await createCheckoutOrder({
+        lines: displayLines,
+        customer: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+        },
+        address: {
+          line1: addressLine1,
+          line2: addressLine2,
+          city,
+          state,
+          postalCode,
+          country: 'India',
+        },
+        note: customerNote,
+      });
 
-    window.setTimeout(() => {
+      const previewOrder: StoredOrder = {
+        orderId: createdOrder.orderId,
+        trackingId: createdOrder.trackingId,
+        createdAt: createdOrder.createdAt,
+        status: createdOrder.status,
+        accountEmail: user?.email?.trim().toLowerCase() || customerEmail.toLowerCase(),
+        itemCount,
+        subtotal: createdOrder.subtotal,
+        customer: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: [addressLine1, addressLine2, city, state, postalCode, 'India'].filter(Boolean).join(', '),
+        },
+        items: displayLines.map((item) => ({
+          cartId: item.cartId,
+          code: item.set.code,
+          name: item.set.name,
+          length: item.length,
+          quantity: item.quantity,
+          price: item.set.price,
+        })),
+      };
+
+      savePreviewOrder(previewOrder);
       clearCart();
-    }, 250);
+      router.push(`/order-confirmed?order=${encodeURIComponent(createdOrder.orderId)}`);
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Could not confirm your order. Please try again.';
+      setSubmitError(message);
+      setIsSubmitting(false);
+    }
   };
 
   if (!isSubmitting && lines.length === 0) {
@@ -158,7 +186,7 @@ export default function CheckoutClient() {
       <span className="pill">Checkout</span>
       <h1 className="mt-5 font-display text-5xl font-black tracking-[-0.07em] md:text-7xl">Confirm your set</h1>
       <p className="mt-4 max-w-2xl text-base leading-8 text-[#756778]">
-        Address, hand photos and final review stay in one calm flow before the payment step connects later.
+        Your order will now be saved to the BILLi&BoBA Supabase database. Razorpay payment connects in the next payment milestone.
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
@@ -174,7 +202,16 @@ export default function CheckoutClient() {
 
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Delivery</p>
-            <textarea name="address" className="input-field mt-4 min-h-28" placeholder="Full delivery address" autoComplete="street-address" required />
+            <div className="mt-4 grid gap-4">
+              <input name="addressLine1" className="input-field" placeholder="House / flat / building / street" autoComplete="address-line1" required />
+              <input name="addressLine2" className="input-field" placeholder="Area / landmark / optional" autoComplete="address-line2" />
+              <div className="grid gap-4 md:grid-cols-3">
+                <input name="city" className="input-field" placeholder="City" autoComplete="address-level2" required />
+                <input name="state" className="input-field" placeholder="State" autoComplete="address-level1" required />
+                <input name="postalCode" className="input-field" placeholder="PIN code" autoComplete="postal-code" required />
+              </div>
+              <textarea name="customerNote" className="input-field min-h-24" placeholder="Order note, preferred details, or timing request optional" />
+            </div>
           </div>
 
           <div className="rounded-[1.8rem] border border-[#4a314e1c] bg-white/42 p-5">
@@ -204,8 +241,14 @@ export default function CheckoutClient() {
             I confirm my hand photos are clear, both hands are visible and the photos follow the coin-reference guide.
           </label>
 
+          {submitError && (
+            <div className="rounded-[1.4rem] border border-[#ee77a640] bg-white/62 p-4 text-sm font-bold leading-6 text-[#8d3d63]">
+              {submitError}
+            </div>
+          )}
+
           <button type="submit" className="btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Confirming order...' : 'Continue to payment'}
+            {isSubmitting ? 'Saving order...' : 'Confirm order'}
           </button>
         </form>
 
@@ -228,11 +271,11 @@ export default function CheckoutClient() {
           <div className="mt-6 grid gap-3 text-sm font-bold text-[#6d5871]">
             <div className="flex justify-between"><span>Items</span><span>{itemCount}</span></div>
             <div className="flex justify-between"><span>Subtotal</span><span>{formatPrice(displaySubtotal)}</span></div>
-            <div className="flex justify-between"><span>Shipping</span><span>Calculated next</span></div>
-            <div className="flex justify-between border-t border-[#4a314e1c] pt-3 text-[#241a29]"><span>Total preview</span><span>{formatPrice(displaySubtotal)}</span></div>
+            <div className="flex justify-between"><span>Shipping</span><span>₹0 for now</span></div>
+            <div className="flex justify-between border-t border-[#4a314e1c] pt-3 text-[#241a29]"><span>Total</span><span>{formatPrice(displaySubtotal)}</span></div>
           </div>
           <p className="mt-5 rounded-[1.4rem] border border-[#4a314e1c] bg-white/45 p-4 text-xs font-semibold leading-5 text-[#8a7a8e]">
-            Razorpay will connect in the backend milestone. For now, this confirms the frontend flow only.
+            This order is saved to the database. Payment status remains pending until Razorpay is connected.
           </p>
         </aside>
       </div>

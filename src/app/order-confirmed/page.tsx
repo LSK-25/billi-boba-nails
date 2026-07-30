@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { getOrderByNumberForCurrentUser } from '@/lib/commerce-orders';
 import { formatPreviewDate, readLatestOrder, type StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 
@@ -9,9 +10,19 @@ const timeline = ['Order confirmed', 'Photos under review', 'In production', 'Qu
 
 export default function OrderConfirmedPage() {
   const [order, setOrder] = useState<StoredOrder | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setOrder(readLatestOrder());
+    const timeoutId = window.setTimeout(async () => {
+      const params = new URLSearchParams(window.location.search);
+      const orderParam = params.get('order') ?? '';
+
+      const databaseOrder = orderParam ? await getOrderByNumberForCurrentUser(orderParam) : null;
+      setOrder(databaseOrder ?? readLatestOrder());
+      setLoading(false);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const placedAt = useMemo(() => formatPreviewDate(order?.createdAt), [order]);
@@ -26,17 +37,19 @@ export default function OrderConfirmedPage() {
               Your set request is in.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-8 text-[#756778]">
-              Your preview order is confirmed. In the backend milestone, this same screen will show the live Razorpay payment status and database order details.
+              {loading
+                ? 'Loading your order details...'
+                : 'Your order is saved in the BILLi&BoBA database. Payment status stays pending until Razorpay is connected.'}
             </p>
 
             <div className="mt-7 grid gap-3 rounded-[1.8rem] border border-white/60 bg-white/48 p-5 backdrop-blur-2xl">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Order ID</span>
-                <strong className="font-mono text-sm text-[#2b2130]">{order?.orderId ?? 'BNB-PREVIEW'}</strong>
+                <strong className="font-mono text-sm text-[#2b2130]">{order?.orderId ?? 'Loading...'}</strong>
               </div>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Tracking ID</span>
-                <strong className="font-mono text-sm text-[#6d3fb1]">{order?.trackingId ?? 'TRK-BNB-PREVIEW'}</strong>
+                <strong className="font-mono text-sm text-[#6d3fb1]">{order?.trackingId ?? 'Loading...'}</strong>
               </div>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Placed</span>
@@ -44,14 +57,14 @@ export default function OrderConfirmedPage() {
               </div>
               {order && (
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Total preview</span>
+                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Total</span>
                   <strong className="text-sm text-[#2b2130]">{formatPrice(order.subtotal)}</strong>
                 </div>
               )}
             </div>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link href={order ? `/track-order?order=${encodeURIComponent(order.orderId)}` : "/track-order"} className="btn-primary">Track order</Link>
+              <Link href={order ? `/track-order?order=${encodeURIComponent(order.orderId)}` : '/track-order'} className="btn-primary">Track order</Link>
               <Link href="/account/orders" className="btn-secondary">My orders</Link>
               <Link href="/shop" className="btn-secondary">Continue shopping</Link>
             </div>

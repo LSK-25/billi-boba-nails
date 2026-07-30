@@ -4,16 +4,28 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AuthGate from '@/components/AuthGate';
 import { useAuth } from '@/components/AuthProvider';
-import { formatPreviewDate, readOrdersForCustomer, type StoredOrder } from '@/lib/preview-orders';
+import { getCustomerOrders } from '@/lib/commerce-orders';
+import { formatPreviewDate, type StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 
 function OrdersContent() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<StoredOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setOrders(readOrdersForCustomer(user?.email));
-  }, [user?.email]);
+    let active = true;
+
+    getCustomerOrders().then((nextOrders) => {
+      if (!active) return;
+      setOrders(nextOrders);
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   return (
     <section className="page-shell py-14">
@@ -22,17 +34,22 @@ function OrdersContent() {
         <div>
           <h1 className="font-display text-5xl font-black tracking-[-0.07em] md:text-7xl">Your order studio.</h1>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[#756778]">
-            This preview page now filters local test orders by the signed-in customer email. Later it will read from the real Supabase account database.
+            Your confirmed BILLi&BoBA orders are now loaded from your Supabase customer account.
           </p>
         </div>
         <Link href="/shop" className="btn-primary w-fit">Browse sets</Link>
       </div>
 
-      {orders.length === 0 ? (
+      {loading ? (
+        <div className="mt-8 liquid-glass rounded-[2rem] p-8">
+          <h2 className="font-display text-4xl font-black tracking-[-0.06em]">Loading orders...</h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-[#756778]">Checking your customer order history.</p>
+        </div>
+      ) : orders.length === 0 ? (
         <div className="mt-8 liquid-glass rounded-[2rem] p-8">
           <h2 className="font-display text-4xl font-black tracking-[-0.06em]">No orders yet.</h2>
           <p className="mt-3 max-w-xl text-sm leading-7 text-[#756778]">
-            Add a nail set to cart and complete the checkout preview. Your confirmed order will appear here.
+            Add a nail set to cart and complete checkout. Your confirmed order will appear here.
           </p>
         </div>
       ) : (
