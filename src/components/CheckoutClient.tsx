@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { ChangeEvent, FormEventHandler } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
 import { createCheckoutOrder } from '@/lib/commerce-orders';
@@ -14,6 +15,7 @@ import type { CartLine } from '@/types';
 type PhotoPreview = {
   fileName: string;
   dataUrl: string;
+  file: File;
 };
 
 function readPhoto(event: ChangeEvent<HTMLInputElement>, onReady: (preview: PhotoPreview | null) => void) {
@@ -31,7 +33,7 @@ function readPhoto(event: ChangeEvent<HTMLInputElement>, onReady: (preview: Phot
 
   const reader = new FileReader();
   reader.onload = () => {
-    onReady({ fileName: file.name, dataUrl: String(reader.result) });
+    onReady({ fileName: file.name, dataUrl: String(reader.result), file });
   };
   reader.readAsDataURL(file);
 }
@@ -89,7 +91,7 @@ export default function CheckoutClient() {
 
   const itemCount = useMemo(() => displayLines.reduce((sum, item) => sum + item.quantity, 0), [displayLines]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
 
     if (displayLines.length === 0 || isSubmitting) return;
@@ -110,7 +112,17 @@ export default function CheckoutClient() {
     const state = String(formData.get('state') ?? '').trim();
     const postalCode = String(formData.get('postalCode') ?? '').trim();
     const customerNote = String(formData.get('customerNote') ?? '').trim();
+    if (!leftHand?.file || !rightHand?.file) {
+      setSubmitError('Please upload both left and right hand photos.');
+      setIsSubmitting(false);
+      return;
+    }
 
+    const photos = [
+      { photoType: 'left_hand' as const, file: leftHand.file },
+      { photoType: 'right_hand' as const, file: rightHand.file },
+      ...(lengthReference?.file ? [{ photoType: 'length_reference' as const, file: lengthReference.file }] : []),
+    ];
     try {
       const createdOrder = await createCheckoutOrder({
         lines: displayLines,
@@ -127,7 +139,8 @@ export default function CheckoutClient() {
           postalCode,
           country: 'India',
         },
-        note: customerNote,
+                note: customerNote,
+        photos,
       });
 
       const previewOrder: StoredOrder = {

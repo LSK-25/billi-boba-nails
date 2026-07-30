@@ -17,6 +17,11 @@ type CheckoutAddress = {
   country: string;
 };
 
+export type CheckoutPhotoInput = {
+  photoType: 'left_hand' | 'right_hand' | 'length_reference';
+  file: File;
+};
+
 export type CreatedCheckoutOrder = {
   orderId: string;
   trackingId: string;
@@ -154,16 +159,95 @@ function normalizeTrackedOrder(value: unknown): StoredOrder | null {
   };
 }
 
+function cleanFileName(fileName: string) {
+  return fileName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'hand-photo.jpg';
+}
+
+function makePhotoPath({
+  userId,
+  orderId,
+  photoType,
+  fileName,
+}: {
+  userId: string;
+  orderId: string;
+  photoType: CheckoutPhotoInput['photoType'];
+  fileName: string;
+}) {
+  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : String(Date.now());
+
+  return `${userId}/${orderId}/${photoType}-${randomPart}-${cleanFileName(fileName)}`;
+}
+
+async function uploadHandPhotos({
+  userId,
+  orderId,
+  photos,
+}: {
+  userId: string;
+  orderId: string;
+  photos: CheckoutPhotoInput[];
+}) {
+  if (photos.length === 0) return;
+
+  const supabase = createClient();
+  const photoRows = [];
+
+  for (const photo of photos) {
+    const storagePath = makePhotoPath({
+      userId,
+      orderId,
+      photoType: photo.photoType,
+      fileName: photo.file.name,
+    });
+
+    const { error: uploadError } = await supabase.storage
+      .from('hand-photos')
+      .upload(storagePath, photo.file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: photo.file.type || 'image/jpeg',
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    photoRows.push({
+      order_id: orderId,
+      uploaded_by: userId,
+      storage_path: storagePath,
+      image_url: null,
+      photo_type: photo.photoType,
+    });
+  }
+
+  const { error: photoInsertError } = await supabase.from('hand_photos').insert(photoRows);
+
+  if (photoInsertError) {
+    throw new Error(photoInsertError.message);
+  }
+}
+
 export async function createCheckoutOrder({
   lines,
   customer,
   address,
   note,
+  photos = [],
 }: {
   lines: CartLine[];
   customer: CheckoutCustomer;
   address: CheckoutAddress;
   note?: string;
+  photos?: CheckoutPhotoInput[];
 }): Promise<CreatedCheckoutOrder> {
   if (lines.length === 0) {
     throw new Error('Your cart is empty.');
@@ -226,6 +310,12 @@ export async function createCheckoutOrder({
   if (itemsError) {
     throw new Error(itemsError.message);
   }
+
+  await uploadHandPhotos({
+    userId: authData.user.id,
+    orderId: order.id,
+    photos,
+  });
 
   return {
     orderId: order.order_number,
