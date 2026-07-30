@@ -6,13 +6,14 @@ import { useState } from 'react';
 import { useCart } from '@/components/CartProvider';
 import type { NailSet, PreferredLength } from '@/types';
 
-const lengthOptions: PreferredLength[] = ['Short', 'Medium', 'Long', 'Same as shown'];
+const defaultLengthOptions: PreferredLength[] = ['Short', 'Medium', 'Long', 'Same as shown'];
 
 export default function SetOrderPanel({ set }: { set: NailSet }) {
   const router = useRouter();
   const { addItem } = useCart();
   const [selectedLength, setSelectedLength] = useState<PreferredLength>(set.length);
   const [added, setAdded] = useState(false);
+    const lengthOptions = set.lengthOptions?.length ? set.lengthOptions : defaultLengthOptions;
 
   const addSelectedSet = () => {
     addItem(set, selectedLength);

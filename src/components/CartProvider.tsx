@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { nailSets } from '@/lib/mock-data';
 import type { CartItem, CartLine, NailSet, PreferredLength } from '@/types';
 
@@ -45,13 +45,22 @@ function parseStoredCart(value: string | null): CartItem[] {
   }
 }
 
-export default function CartProvider({ children }: { children: React.ReactNode }) {
+export default function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    setItems(parseStoredCart(window.localStorage.getItem(CART_STORAGE_KEY)));
-    setIsReady(true);
+     useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const timeoutId = window.setTimeout(() => {
+      const savedCart = window.localStorage.getItem(CART_STORAGE_KEY);
+      setItems(parseStoredCart(savedCart));
+      setIsReady(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function CartProvider({ children }: { children: React.ReactNode }
   const lines = useMemo(() => {
     return items
       .map((item) => {
-        const set = nailSets.find((nailSet) => nailSet.id === item.setId);
+        const set = item.setSnapshot ?? nailSets.find((nailSet) => nailSet.id === item.setId);
         return set ? { ...item, set } : null;
       })
       .filter(Boolean) as CartLine[];
@@ -82,7 +91,13 @@ export default function CartProvider({ children }: { children: React.ReactNode }
 
       if (existingItem) {
         return currentItems.map((item) =>
-          item.cartId === cartId ? { ...item, quantity: item.quantity + 1 } : item,
+          item.cartId === cartId
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                setSnapshot: set,
+              }
+            : item,
         );
       }
 
@@ -94,6 +109,7 @@ export default function CartProvider({ children }: { children: React.ReactNode }
           length,
           quantity: 1,
           addedAt: new Date().toISOString(),
+          setSnapshot: set,
         },
       ];
     });

@@ -1,6 +1,11 @@
 import FilterRail from '@/components/FilterRail';
+import { getActiveProducts } from '@/lib/products';
 
-export default function ShopPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function ShopPage() {
+  const products = await getActiveProducts();
+
   return (
     <>
       <section className="page-shell pt-14">
@@ -10,11 +15,11 @@ export default function ShopPage() {
             Browse curated press-on sets.
           </h1>
           <p className="text-base leading-8 text-[#756778]">
-            Filter by category, size / length, shape, finish and price. Real nail photos will be uploaded later from your admin dashboard.
+            Filter by category, size / length, shape, finish and price. Products are now loaded from the BILLi&BoBA Supabase database.
           </p>
         </div>
       </section>
-      <FilterRail />
+      <FilterRail sets={products} />
     </>
   );
 }

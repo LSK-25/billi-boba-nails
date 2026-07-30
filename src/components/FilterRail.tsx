@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { categories, finishes, lengths, nailSets, priceBands, shapes } from '@/lib/mock-data';
+import { finishes, lengths, nailSets, shapes } from '@/lib/mock-data';
+import type { NailSet, PreferredLength } from '@/types';
 
-export default function FilterRail() {
+export default function FilterRail({ sets = nailSets }: { sets?: NailSet[] }) {
   const [category, setCategory] = useState('All');
   const [length, setLength] = useState('All');
   const [shape, setShape] = useState('All');
@@ -13,12 +14,28 @@ export default function FilterRail() {
   const [query, setQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  const categoryValues = useMemo(() => {
+    const values = Array.from(new Set(sets.map((set) => set.category).filter(Boolean)));
+    return ['All', ...values];
+  }, [sets]);
+
+  const priceBandValues = useMemo(() => ['All', 'Under ₹800', '₹800–₹1100', 'Above ₹1100'], []);
+
   const filteredSets = useMemo(() => {
-    return nailSets.filter((set) => {
+    return sets.filter((set) => {
       const q = query.trim().toLowerCase();
-      const textMatch = !q || [set.name, set.code, set.category, set.color, set.finish, set.shape].join(' ').toLowerCase().includes(q);
+      const textMatch =
+        !q ||
+        [set.name, set.code, set.category, set.color, set.finish, set.shape]
+          .join(' ')
+          .toLowerCase()
+          .includes(q);
+
       const categoryMatch = category === 'All' || set.category === category;
-      const lengthMatch = length === 'All' || set.length === length;
+      const lengthMatch =
+        length === 'All' ||
+        set.length === length ||
+        set.lengthOptions?.includes(length as PreferredLength);
       const shapeMatch = shape === 'All' || set.shape === shape;
       const finishMatch = finish === 'All' || set.finish === finish;
       const priceMatch =
@@ -29,7 +46,7 @@ export default function FilterRail() {
 
       return textMatch && categoryMatch && lengthMatch && shapeMatch && finishMatch && priceMatch;
     });
-  }, [category, length, shape, finish, price, query]);
+  }, [sets, category, length, shape, finish, price, query]);
 
   const activeFilterCount = [category, length, shape, finish, price].filter((value) => value !== 'All').length + (query.trim() ? 1 : 0);
 
@@ -82,6 +99,7 @@ export default function FilterRail() {
             setQuery={setQuery}
             category={category}
             setCategory={setCategory}
+            categoryValues={categoryValues}
             length={length}
             setLength={setLength}
             shape={shape}
@@ -90,6 +108,7 @@ export default function FilterRail() {
             setFinish={setFinish}
             price={price}
             setPrice={setPrice}
+            priceBandValues={priceBandValues}
             reset={reset}
           />
         </aside>
@@ -132,6 +151,7 @@ export default function FilterRail() {
             setQuery={setQuery}
             category={category}
             setCategory={setCategory}
+            categoryValues={categoryValues}
             length={length}
             setLength={setLength}
             shape={shape}
@@ -140,6 +160,7 @@ export default function FilterRail() {
             setFinish={setFinish}
             price={price}
             setPrice={setPrice}
+            priceBandValues={priceBandValues}
             reset={reset}
             close={() => setIsFilterOpen(false)}
           />
@@ -154,6 +175,7 @@ function FilterContent({
   setQuery,
   category,
   setCategory,
+  categoryValues,
   length,
   setLength,
   shape,
@@ -162,6 +184,7 @@ function FilterContent({
   setFinish,
   price,
   setPrice,
+  priceBandValues,
   reset,
   close,
 }: {
@@ -169,6 +192,7 @@ function FilterContent({
   setQuery: (value: string) => void;
   category: string;
   setCategory: (value: string) => void;
+  categoryValues: string[];
   length: string;
   setLength: (value: string) => void;
   shape: string;
@@ -177,6 +201,7 @@ function FilterContent({
   setFinish: (value: string) => void;
   price: string;
   setPrice: (value: string) => void;
+  priceBandValues: string[];
   reset: () => void;
   close?: () => void;
 }) {
@@ -203,11 +228,11 @@ function FilterContent({
         <input className="input-field text-sm normal-case tracking-normal" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, code, colour..." />
       </label>
       <div className="mt-6 grid gap-5">
-        <FilterGroup label="Category" value={category} values={categories} onChange={setCategory} />
+        <FilterGroup label="Category" value={category} values={categoryValues} onChange={setCategory} />
         <FilterGroup label="Size / length" value={length} values={lengths} onChange={setLength} />
         <FilterGroup label="Shape" value={shape} values={shapes} onChange={setShape} />
         <FilterGroup label="Finish" value={finish} values={finishes} onChange={setFinish} />
-        <FilterGroup label="Price" value={price} values={priceBands} onChange={setPrice} />
+        <FilterGroup label="Price" value={price} values={priceBandValues} onChange={setPrice} />
       </div>
       {close && (
         <button type="button" onClick={close} className="mt-7 w-full rounded-full bg-[#24182a] px-5 py-3 text-sm font-black text-white shadow-[0_18px_42px_rgba(36,24,42,0.2)] transition hover:-translate-y-0.5">

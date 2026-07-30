@@ -1,16 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SetOrderPanel from '@/components/SetOrderPanel';
-import { nailSets } from '@/lib/mock-data';
+import { getActiveProductBySlug } from '@/lib/products';
 import { formatPrice } from '@/lib/utils';
 
-export function generateStaticParams() {
-  return nailSets.map((set) => ({ id: set.id }));
-}
+export const dynamic = 'force-dynamic';
 
 export default async function SetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const set = nailSets.find((item) => item.id === id);
+  const set = await getActiveProductBySlug(id);
 
   if (!set) notFound();
 
@@ -22,7 +20,10 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
           style={{ background: `linear-gradient(135deg, ${set.tone}, #ffffff 52%, ${set.accentTone})` }}
         >
           <div className="noise-overlay" />
-          <div className="absolute left-6 top-6 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur">{set.code}</div>
+          <div className="absolute left-6 top-6 rounded-full border border-white/70 bg-white/55 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur">
+            {set.code}
+          </div>
+
           <div className="absolute inset-0 grid place-items-center">
             <div className="relative h-80 w-80">
               <span className="absolute left-10 top-10 h-60 w-20 rounded-full bg-white/62 shadow-[inset_0_0_30px_rgba(255,255,255,.7),0_34px_70px_rgba(120,84,132,.16)]" />
@@ -31,6 +32,7 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
               <span className="absolute inset-x-20 top-36 h-8 rounded-full bg-white/75 blur-md" />
             </div>
           </div>
+
           <div className="absolute bottom-6 left-6 right-6 grid gap-3 rounded-[1.6rem] border border-white/70 bg-white/42 p-5 backdrop-blur-xl md:grid-cols-3">
             {[set.length, set.shape, set.finish].map((item) => (
               <div key={item}>
@@ -43,10 +45,13 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
       </div>
 
       <div className="self-center">
-        <span className="pill">{set.category} • {set.code}</span>
-        <h1 className="mt-6 font-display text-5xl font-black leading-[0.93] tracking-[-0.07em] md:text-7xl">{set.name}</h1>
+        <span className="pill">{set.category} - {set.code}</span>
+        <h1 className="mt-6 font-display text-5xl font-black leading-[0.93] tracking-[-0.07em] md:text-7xl">
+          {set.name}
+        </h1>
         <p className="mt-5 text-lg leading-8 text-[#756778]">{set.description}</p>
         <p className="mt-3 text-base font-bold leading-7 text-[#5f5263]">{set.story}</p>
+
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {[
             ['Price', formatPrice(set.price)],
@@ -60,13 +65,17 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
             </div>
           ))}
         </div>
+
         <SetOrderPanel set={set} />
+
         <div className="mt-6 rounded-[1.6rem] border border-[#4a314e1c] bg-white/40 p-5 backdrop-blur">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">What happens next</p>
           <p className="mt-2 text-sm font-semibold leading-6 text-[#756778]">
             At checkout, customers upload left and right hand photos. After payment, the order is confirmed and production starts after photo review.
           </p>
-          <Link href="/how-to-order" className="mt-4 inline-flex text-sm font-black text-[#6d3fb1]">Read the process →</Link>
+          <Link href="/how-to-order" className="mt-4 inline-flex text-sm font-black text-[#6d3fb1]">
+            Read the process -&gt;
+          </Link>
         </div>
       </div>
     </section>

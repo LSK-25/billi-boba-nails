@@ -6,6 +6,7 @@ export type NailSet = {
   name: string;
   category: string;
   length: PreferredLength;
+  lengthOptions?: PreferredLength[];
   shape: string;
   finish: string;
   price: number;
@@ -25,6 +26,7 @@ export type CartItem = {
   length: PreferredLength;
   quantity: number;
   addedAt: string;
+  setSnapshot?: NailSet;
 };
 
 export type CartLine = CartItem & {
