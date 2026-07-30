@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
 import { cn } from '@/lib/utils';
 
@@ -38,18 +39,8 @@ function CartIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M9.3 20.15h.02M16.55 20.15h.02"
-        stroke="currentColor"
-        strokeWidth="2.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M10.1 8.2a3.1 3.1 0 0 1 6.2 0"
-        stroke="currentColor"
-        strokeWidth="1.85"
-        strokeLinecap="round"
-      />
+      <path d="M9.3 20.15h.02M16.55 20.15h.02" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M10.1 8.2a3.1 3.1 0 0 1 6.2 0" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
     </svg>
   );
 }
@@ -81,6 +72,8 @@ function CartButton({ mobile = false }: { mobile?: boolean }) {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
   const [activePill, setActivePill] = useState({ left: 4, width: 72, ready: false });
@@ -105,6 +98,15 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', movePill);
   }, [pathname]);
 
+  function handleSignOut() {
+    signOut();
+    setOpen(false);
+    router.push('/');
+  }
+
+  const accountHref = user?.role === 'admin' ? '/admin' : '/account';
+  const accountLabel = user?.role === 'admin' ? 'Admin' : 'Account';
+
   return (
     <header className="sticky top-0 z-50 nav-blur">
       <div className="page-shell flex min-h-[4.75rem] items-center justify-between gap-3 py-3 md:min-h-[5rem] md:gap-5">
@@ -124,11 +126,7 @@ export default function Navbar() {
         >
           <span
             className="nav-active-glider"
-            style={{
-              transform: `translateX(${activePill.left}px)`,
-              width: `${activePill.width}px`,
-              opacity: activePill.ready ? 1 : 0,
-            }}
+            style={{ transform: `translateX(${activePill.left}px)`, width: `${activePill.width}px`, opacity: activePill.ready ? 1 : 0 }}
             aria-hidden="true"
           />
           {navItems.map((item) => {
@@ -152,7 +150,14 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <CartButton />
-          <Link href="/login" className="btn-primary px-4 py-2 text-sm">Login</Link>
+          {user ? (
+            <>
+              <Link href={accountHref} className="btn-secondary px-4 py-2 text-sm">{accountLabel}</Link>
+              <button type="button" onClick={handleSignOut} className="btn-ghost px-4 py-2 text-sm">Sign out</button>
+            </>
+          ) : (
+            <Link href="/login" className="btn-primary px-4 py-2 text-sm">Login</Link>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
@@ -173,34 +178,36 @@ export default function Navbar() {
           <div className="liquid-glass grid gap-2 rounded-3xl p-3">
             <div className="grid gap-1">
               {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-2xl px-4 py-3 text-sm font-bold text-[#3b3040] hover:bg-white/70"
-                >
+                <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-[#3b3040] hover:bg-white/70">
                   {item.label}
                 </Link>
               ))}
             </div>
 
+            {user && (
+              <div className="mt-2 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
+                <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">Signed in</p>
+                <Link href={accountHref} onClick={() => setOpen(false)} className="mt-2 block rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65">
+                  Open {accountLabel.toLowerCase()}
+                </Link>
+                <button type="button" onClick={handleSignOut} className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-[#3b3040] hover:bg-white/65">
+                  Sign out
+                </button>
+              </div>
+            )}
+
             <div className="mt-2 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
               <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">Support</p>
               <div className="mt-2 grid gap-1">
                 {mobileSupportItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65"
-                  >
+                  <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65">
                     {item.label}
                   </Link>
                 ))}
               </div>
             </div>
 
-            <Link href="/login" onClick={() => setOpen(false)} className="btn-primary mt-2 py-3 text-sm">Login / Signup</Link>
+            {!user && <Link href="/login" onClick={() => setOpen(false)} className="btn-primary mt-2 py-3 text-sm">Login / Signup</Link>}
           </div>
         </div>
       )}

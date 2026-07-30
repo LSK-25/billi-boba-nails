@@ -2,15 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { formatPreviewDate, readOrders, type StoredOrder } from '@/lib/preview-orders';
+import AuthGate from '@/components/AuthGate';
+import { useAuth } from '@/components/AuthProvider';
+import { formatPreviewDate, readOrdersForCustomer, type StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
 
-export default function MyOrdersPage() {
+function OrdersContent() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<StoredOrder[]>([]);
 
   useEffect(() => {
-    setOrders(readOrders());
-  }, []);
+    setOrders(readOrdersForCustomer(user?.email));
+  }, [user?.email]);
 
   return (
     <section className="page-shell py-14">
@@ -19,7 +22,7 @@ export default function MyOrdersPage() {
         <div>
           <h1 className="font-display text-5xl font-black tracking-[-0.07em] md:text-7xl">Your order studio.</h1>
           <p className="mt-4 max-w-2xl text-base leading-8 text-[#756778]">
-            This preview page reads local test orders from your browser. Later it will show orders from the real customer account database.
+            This preview page now filters local test orders by the signed-in customer email. Later it will read from the real Supabase account database.
           </p>
         </div>
         <Link href="/shop" className="btn-primary w-fit">Browse sets</Link>
@@ -78,5 +81,13 @@ export default function MyOrdersPage() {
         </div>
       )}
     </section>
+  );
+}
+
+export default function MyOrdersPage() {
+  return (
+    <AuthGate requiredRole="customer" title="Login to see your orders." description="Your BILLi&BoBA orders are connected to your customer account.">
+      <OrdersContent />
+    </AuthGate>
   );
 }

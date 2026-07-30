@@ -1,5 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import AuthGate from '@/components/AuthGate';
+import { useAuth } from '@/components/AuthProvider';
 
 const adminNav = [
   { href: '/admin', label: 'Dashboard' },
@@ -16,7 +20,9 @@ type AdminShellProps = {
   action?: ReactNode;
 };
 
-export default function AdminShell({ eyebrow = 'BILLi&BoBA admin', title, description, children, action }: AdminShellProps) {
+function AdminWorkspace({ eyebrow, title, description, children, action }: AdminShellProps) {
+  const { user, signOut } = useAuth();
+
   return (
     <section className="page-shell py-10 md:py-12">
       <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
@@ -24,6 +30,7 @@ export default function AdminShell({ eyebrow = 'BILLi&BoBA admin', title, descri
           <div className="rounded-[1.5rem] border border-white/65 bg-white/35 p-4">
             <p className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8d6d98]">Studio tools</p>
             <p className="mt-2 font-display text-2xl font-black tracking-[-0.06em] text-[#2b2130]">B&amp;B workspace</p>
+            <p className="mt-2 text-xs font-bold leading-5 text-[#8a7a8e]">Signed in as {user?.email}</p>
           </div>
           <nav className="mt-4 grid gap-2">
             {adminNav.map((item) => (
@@ -39,6 +46,9 @@ export default function AdminShell({ eyebrow = 'BILLi&BoBA admin', title, descri
           <Link href="/shop" className="btn-secondary mt-4 w-full py-3 text-sm">
             View customer shop
           </Link>
+          <button type="button" onClick={signOut} className="btn-ghost mt-3 w-full py-3 text-sm">
+            Sign out
+          </button>
         </aside>
 
         <div className="min-w-0">
@@ -56,5 +66,13 @@ export default function AdminShell({ eyebrow = 'BILLi&BoBA admin', title, descri
         </div>
       </div>
     </section>
+  );
+}
+
+export default function AdminShell(props: AdminShellProps) {
+  return (
+    <AuthGate requiredRole="admin" title="Admin login required." description="Only the BILLi&BoBA studio owner account can open products, orders and internal notes.">
+      <AdminWorkspace {...props} eyebrow={props.eyebrow ?? 'BILLi&BoBA admin'} />
+    </AuthGate>
   );
 }

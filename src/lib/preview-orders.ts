@@ -3,6 +3,7 @@ export type StoredOrder = {
   trackingId: string;
   createdAt: string;
   status: string;
+  accountEmail?: string;
   itemCount: number;
   subtotal: number;
   customer?: {
@@ -53,6 +54,20 @@ function safeParseOrders(value: string | null): StoredOrder[] {
 export function readOrders(): StoredOrder[] {
   if (!canUseBrowserStorage()) return [];
   return safeParseOrders(window.localStorage.getItem(ORDER_HISTORY_STORAGE_KEY));
+}
+
+
+export function readOrdersForCustomer(email?: string): StoredOrder[] {
+  if (!email?.trim()) return [];
+
+  const normalizedEmail = normalizeText(email);
+
+  return readOrders().filter((order) => {
+    const accountEmail = normalizeText(order.accountEmail ?? '');
+    const checkoutEmail = normalizeText(order.customer?.email ?? '');
+
+    return accountEmail === normalizedEmail || checkoutEmail === normalizedEmail;
+  });
 }
 
 export function readLatestOrder(): StoredOrder | null {

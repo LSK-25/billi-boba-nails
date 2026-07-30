@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
 import { makeOrderId, makeTrackingId, savePreviewOrder } from '@/lib/preview-orders';
 import type { StoredOrder } from '@/lib/preview-orders';
@@ -72,6 +73,7 @@ function PhotoUploadBox({
 
 export default function CheckoutClient() {
   const router = useRouter();
+  const { user } = useAuth();
   const { lines, subtotal, clearCart } = useCart();
   const [leftHand, setLeftHand] = useState<PhotoPreview | null>(null);
   const [rightHand, setRightHand] = useState<PhotoPreview | null>(null);
@@ -107,6 +109,7 @@ export default function CheckoutClient() {
       trackingId,
       createdAt: new Date().toISOString(),
       status: 'Order confirmed',
+      accountEmail: user?.email?.trim().toLowerCase() || customerEmail.toLowerCase(),
       itemCount,
       subtotal: displaySubtotal,
       customer: {
@@ -163,10 +166,10 @@ export default function CheckoutClient() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Contact</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <input name="name" className="input-field" placeholder="Full name" autoComplete="name" required />
+              <input name="name" className="input-field" placeholder="Full name" autoComplete="name" defaultValue={user?.name ?? ''} required />
               <input name="phone" className="input-field" placeholder="Phone number" autoComplete="tel" required />
             </div>
-            <input name="email" className="input-field mt-4" placeholder="Email address" type="email" autoComplete="email" required />
+            <input name="email" className="input-field mt-4" placeholder="Email address" type="email" autoComplete="email" defaultValue={user?.email ?? ''} required />
           </div>
 
           <div>

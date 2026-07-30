@@ -24,9 +24,10 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="mt-6 liquid-glass rounded-[2rem] p-4 md:p-6">
-        <div className="grid gap-3 rounded-[1.4rem] border border-white/55 bg-white/35 p-4 text-xs font-black uppercase tracking-[0.16em] text-[#8c6d96] lg:grid-cols-[1fr_.9fr_.75fr_.75fr_.45fr] lg:items-center">
+        <div className="grid gap-3 rounded-[1.4rem] border border-white/55 bg-white/35 p-4 text-xs font-black uppercase tracking-[0.16em] text-[#8c6d96] lg:grid-cols-[1fr_.9fr_.72fr_.72fr_.72fr_.45fr] lg:items-center">
           <span>Order</span>
           <span>Customer</span>
+          <span>Placed</span>
           <span>Photo status</span>
           <span>Production</span>
           <span>Total</span>
@@ -39,7 +40,7 @@ export default function AdminOrdersPage() {
               <Link
                 key={order.id}
                 href={`/admin/orders/${order.id}`}
-                className="grid gap-4 rounded-[1.65rem] border border-white/55 bg-white/40 p-4 transition hover:bg-white/62 lg:grid-cols-[1fr_.9fr_.75fr_.75fr_.45fr] lg:items-center"
+                className="grid gap-4 rounded-[1.65rem] border border-white/55 bg-white/40 p-4 transition hover:bg-white/62 lg:grid-cols-[1fr_.9fr_.72fr_.72fr_.72fr_.45fr] lg:items-center"
               >
                 <div>
                   <p className="font-black text-[#34263c]">{order.id}</p>
@@ -48,6 +49,10 @@ export default function AdminOrdersPage() {
                 <div>
                   <p className="text-sm font-black text-[#4b3e51]">{order.customer}</p>
                   <p className="mt-1 text-xs font-bold text-[#8a728d]">{order.city}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-black text-[#4b3e51]">{order.placedAt}</p>
+                  <p className="mt-1 text-xs font-bold text-[#8a728d]">Order date</p>
                 </div>
                 <span className="w-fit rounded-full bg-[#fff0f7] px-3 py-1 text-xs font-black text-[#b04e79]">{order.photoStatus}</span>
                 <span className="w-fit rounded-full bg-[#f4eaff] px-3 py-1 text-xs font-black text-[#6d3fb1]">{order.status}</span>
