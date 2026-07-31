@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
 import { cn } from '@/lib/utils';
@@ -76,6 +76,7 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
+  const scrollYRef = useRef(0);
   const [activePill, setActivePill] = useState({ left: 4, width: 72, ready: false });
 
   useLayoutEffect(() => {
@@ -98,6 +99,48 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', movePill);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    scrollYRef.current = window.scrollY;
+
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollYRef.current}px`;
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      window.scrollTo(0, scrollYRef.current);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const closeDesktopMenu = () => {
+      if (window.innerWidth >= 1024) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', closeDesktopMenu);
+    return () => window.removeEventListener('resize', closeDesktopMenu);
+  }, []);
+
   function handleSignOut() {
     signOut();
     setOpen(false);
@@ -112,11 +155,17 @@ export default function Navbar() {
       <div className="page-shell flex min-h-[4.75rem] items-center justify-between gap-3 py-3 md:min-h-[5rem] md:gap-5">
         <Link href="/" className="group flex min-w-0 items-center gap-3" aria-label="BILLi&BoBA NAILS home">
           <div className="brand-mark grid h-11 w-11 shrink-0 place-items-center rounded-[1.05rem] transition duration-300 group-hover:-rotate-3 group-hover:scale-105 md:h-12 md:w-12">
-            <span className="font-display text-[1rem] font-black tracking-[-0.08em] text-[#2b2130] md:text-[1.08rem]">B&amp;B</span>
+            <span className="font-display text-[1rem] font-black tracking-[-0.08em] text-[#2b2130] md:text-[1.08rem]">
+              B&amp;B
+            </span>
           </div>
           <div className="min-w-0 leading-none">
-            <div className="brand-wordmark truncate font-display text-[1.22rem] font-black tracking-[-0.065em] md:text-[1.6rem]">BILLi&amp;BoBA</div>
-            <div className="mt-1 text-[0.52rem] font-black uppercase tracking-[0.32em] text-[#8f7492] md:text-[0.58rem] md:tracking-[0.36em]">NAILS</div>
+            <div className="brand-wordmark truncate font-display text-[1.22rem] font-black tracking-[-0.065em] md:text-[1.6rem]">
+              BILLi&amp;BoBA
+            </div>
+            <div className="mt-1 text-[0.52rem] font-black uppercase tracking-[0.32em] text-[#8f7492] md:text-[0.58rem] md:tracking-[0.36em]">
+              NAILS
+            </div>
           </div>
         </Link>
 
@@ -126,7 +175,11 @@ export default function Navbar() {
         >
           <span
             className="nav-active-glider"
-            style={{ transform: `translateX(${activePill.left}px)`, width: `${activePill.width}px`, opacity: activePill.ready ? 1 : 0 }}
+            style={{
+              transform: `translateX(${activePill.left}px)`,
+              width: `${activePill.width}px`,
+              opacity: activePill.ready ? 1 : 0,
+            }}
             aria-hidden="true"
           />
           {navItems.map((item) => {
@@ -152,11 +205,17 @@ export default function Navbar() {
           <CartButton />
           {user ? (
             <>
-              <Link href={accountHref} className="btn-secondary px-4 py-2 text-sm">{accountLabel}</Link>
-              <button type="button" onClick={handleSignOut} className="btn-ghost px-4 py-2 text-sm">Sign out</button>
+              <Link href={accountHref} className="btn-secondary px-4 py-2 text-sm">
+                {accountLabel}
+              </Link>
+              <button type="button" onClick={handleSignOut} className="btn-ghost px-4 py-2 text-sm">
+                Sign out
+              </button>
             </>
           ) : (
-            <Link href="/login" className="btn-primary px-4 py-2 text-sm">Login</Link>
+            <Link href="/login" className="btn-primary px-4 py-2 text-sm">
+              Login
+            </Link>
           )}
         </div>
 
@@ -165,20 +224,25 @@ export default function Navbar() {
           <button
             className="grid h-11 w-11 place-items-center rounded-full border border-white/55 bg-white/45 text-[#33233b] shadow-[0_14px_42px_rgba(139,101,190,.13),inset_0_1px_0_rgba(255,255,255,.78)] backdrop-blur-2xl transition hover:bg-white/75 hover:text-[#7c58d7]"
             onClick={() => setOpen((value) => !value)}
-            aria-label="Open menu"
+            aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >
-            <span className="text-xl">☰</span>
+            <span className="text-xl">{open ? '×' : '☰'}</span>
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="page-shell pb-4 lg:hidden">
+        <div className="page-shell max-h-[calc(100vh-5rem)] overflow-y-auto pb-4 lg:hidden">
           <div className="liquid-glass grid gap-2 rounded-3xl p-3">
             <div className="grid gap-1">
               {navItems.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-[#3b3040] hover:bg-white/70">
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-2xl px-4 py-3 text-sm font-bold text-[#3b3040] hover:bg-white/70"
+                >
                   {item.label}
                 </Link>
               ))}
@@ -186,11 +250,21 @@ export default function Navbar() {
 
             {user && (
               <div className="mt-2 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
-                <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">Signed in</p>
-                <Link href={accountHref} onClick={() => setOpen(false)} className="mt-2 block rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65">
+                <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">
+                  Signed in
+                </p>
+                <Link
+                  href={accountHref}
+                  onClick={() => setOpen(false)}
+                  className="mt-2 block rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65"
+                >
                   Open {accountLabel.toLowerCase()}
                 </Link>
-                <button type="button" onClick={handleSignOut} className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-[#3b3040] hover:bg-white/65">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-[#3b3040] hover:bg-white/65"
+                >
                   Sign out
                 </button>
               </div>
@@ -200,14 +274,23 @@ export default function Navbar() {
               <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">Support</p>
               <div className="mt-2 grid gap-1">
                 {mobileSupportItems.map((item) => (
-                  <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className="rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65">
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65"
+                  >
                     {item.label}
                   </Link>
                 ))}
               </div>
             </div>
 
-            {!user && <Link href="/login" onClick={() => setOpen(false)} className="btn-primary mt-2 py-3 text-sm">Login / Signup</Link>}
+            {!user && (
+              <Link href="/login" onClick={() => setOpen(false)} className="btn-primary mt-2 py-3 text-sm">
+                Login / Signup
+              </Link>
+            )}
           </div>
         </div>
       )}
