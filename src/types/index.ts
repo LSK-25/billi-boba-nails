@@ -2,6 +2,7 @@ export type PreferredLength = 'Short' | 'Medium' | 'Long' | 'Same as shown';
 
 export type NailSet = {
   id: string;
+  databaseId?: string;
   code: string;
   name: string;
   category: string;
@@ -13,6 +14,8 @@ export type NailSet = {
   color: string;
   tone: string;
   accentTone: string;
+  imageUrl?: string | null;
+  gallery?: string[];
   description: string;
   story: string;
   productionTime: string;

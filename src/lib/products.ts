@@ -2,6 +2,14 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { NailSet, PreferredLength } from '@/types';
 import { nailSets } from '@/lib/mock-data';
 
+type ProductImageRow = {
+  image_url: string | null;
+  storage_path: string | null;
+  alt_text: string | null;
+  is_primary: boolean | null;
+  sort_order: number | null;
+};
+
 type ProductRow = {
   id: string;
   slug: string;
@@ -19,6 +27,7 @@ type ProductRow = {
   status: string | null;
   is_featured: boolean | null;
   sort_order: number | null;
+  product_images: ProductImageRow[] | null;
 };
 
 const PRODUCT_SELECT = `
@@ -37,7 +46,14 @@ const PRODUCT_SELECT = `
   production_time_days,
   status,
   is_featured,
-  sort_order
+  sort_order,
+  product_images (
+    image_url,
+    storage_path,
+    alt_text,
+    is_primary,
+    sort_order
+  )
 `;
 
 const themes = [
@@ -87,13 +103,28 @@ function normalizeLengthOptions(values?: string[] | null): PreferredLength[] {
   return options.length ? options : ['Same as shown'];
 }
 
+function getGallery(images?: ProductImageRow[] | null) {
+  return [...(images ?? [])]
+    .sort((a, b) => {
+      if (Boolean(a.is_primary) !== Boolean(b.is_primary)) {
+        return Boolean(a.is_primary) ? -1 : 1;
+      }
+
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    })
+    .map((image) => image.image_url)
+    .filter((value): value is string => Boolean(value));
+}
+
 function mapProductRow(row: ProductRow, index = 0): NailSet {
   const fallbackTheme = themes[index % themes.length];
   const theme = themeBySlug[row.slug] ?? fallbackTheme;
   const lengthOptions = normalizeLengthOptions(row.length_options);
+  const gallery = getGallery(row.product_images);
 
   return {
     id: row.slug,
+    databaseId: row.id,
     code: row.design_code ?? `BNB-${String(index + 1).padStart(3, '0')}`,
     name: row.name,
     category: row.category ?? 'Press-on set',
@@ -105,6 +136,8 @@ function mapProductRow(row: ProductRow, index = 0): NailSet {
     color: theme.color,
     tone: theme.tone,
     accentTone: theme.accentTone,
+    imageUrl: gallery[0] ?? null,
+    gallery,
     description: row.description ?? 'A made-to-order BILLi&BoBA press-on nail set.',
     story: row.studio_note ?? 'Designed by the BILLi&BoBA studio.',
     productionTime: `${row.production_time_days ?? 7} working days`,

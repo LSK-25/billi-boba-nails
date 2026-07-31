@@ -65,11 +65,28 @@ export default function CartClient() {
           {lines.map((item) => (
             <article key={item.cartId} className="liquid-glass grid gap-5 rounded-[2rem] p-4 md:grid-cols-[150px_1fr_auto] md:items-center">
               <Link
-                href={`/sets/${item.set.id}`}
-                className="min-h-[130px] rounded-[1.4rem] border border-white/70 transition hover:scale-[1.015]"
-                style={{ background: `linear-gradient(135deg, ${item.set.tone}, #fff, ${item.set.accentTone})` }}
-                aria-label={`View ${item.set.name}`}
-              />
+  href={`/sets/${item.set.id}`}
+  className="relative min-h-[130px] overflow-hidden rounded-[1.4rem] border border-white/70 transition hover:scale-[1.015]"
+  style={{ background: `linear-gradient(135deg, ${item.set.tone}, #fff, ${item.set.accentTone})` }}
+  aria-label={`View ${item.set.name}`}
+>
+  {item.set.imageUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={item.set.imageUrl}
+      alt={item.set.name}
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  ) : (
+    <div className="absolute inset-0 grid place-items-center">
+      <div className="relative h-24 w-24">
+        <span className="absolute left-3 top-3 h-20 w-7 rounded-full bg-white/64 shadow-[inset_0_0_18px_rgba(255,255,255,.55),0_16px_35px_rgba(120,84,132,.13)]" />
+        <span className="absolute left-10 top-0 h-24 w-8 rounded-full bg-white/72 shadow-[inset_0_0_18px_rgba(255,255,255,.7),0_16px_35px_rgba(120,84,132,.15)]" />
+        <span className="absolute right-3 top-5 h-16 w-7 rounded-full bg-white/58 shadow-[inset_0_0_18px_rgba(255,255,255,.52),0_16px_35px_rgba(120,84,132,.11)]" />
+      </div>
+    </div>
+  )}
+</Link>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">{item.set.code}</p>
                 <Link href={`/sets/${item.set.id}`} className="mt-2 block font-display text-3xl font-black tracking-[-0.06em] hover:text-[#7c58d7]">

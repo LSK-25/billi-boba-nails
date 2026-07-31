@@ -6,7 +6,7 @@ export default function NewAdminProductPage() {
     <AdminShell
       eyebrow="Create listing"
       title="Add a new set"
-      description="Use this layout to create a future nail set listing with photos, price, category, length, shape, finish and product-page copy."
+      description="Create a live Supabase product with photos, price, category, length options, shape, finish and product-page copy."
     >
       <AdminProductForm mode="new" />
     </AdminShell>
