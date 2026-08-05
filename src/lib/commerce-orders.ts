@@ -41,6 +41,7 @@ type OrderItemRow = {
 };
 
 type OrderRow = {
+  id: string;
   order_number: string;
   tracking_code: string;
   created_at: string;
@@ -59,6 +60,7 @@ type OrderRow = {
 };
 
 const ORDER_SELECT = `
+  id,
   order_number,
   tracking_code,
   created_at,
@@ -122,10 +124,13 @@ function mapOrderRow(order: OrderRow): StoredOrder {
     .join(', ');
 
   return {
+    databaseOrderId: order.id,
     orderId: order.order_number,
     trackingId: order.tracking_code,
     createdAt: order.created_at,
+    rawStatus: order.status,
     status: getStatusLabel(order.status),
+    canReuploadPhotos: order.status === 'photos_needed_again',
     accountEmail: order.customer_email,
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     subtotal: order.subtotal_inr,
@@ -160,12 +165,14 @@ function normalizeTrackedOrder(value: unknown): StoredOrder | null {
 }
 
 function cleanFileName(fileName: string) {
-  return fileName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '') || 'hand-photo.jpg';
+  return (
+    fileName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9.]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'hand-photo.jpg'
+  );
 }
 
 function makePhotoPath({
@@ -179,9 +186,10 @@ function makePhotoPath({
   photoType: CheckoutPhotoInput['photoType'];
   fileName: string;
 }) {
-  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : String(Date.now());
+  const randomPart =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : String(Date.now());
 
   return `${userId}/${orderId}/${photoType}-${randomPart}-${cleanFileName(fileName)}`;
 }
@@ -198,7 +206,14 @@ async function uploadHandPhotos({
   if (photos.length === 0) return;
 
   const supabase = createClient();
-  const photoRows = [];
+
+  const photoRows: Array<{
+    order_id: string;
+    uploaded_by: string;
+    storage_path: string;
+    image_url: null;
+    photo_type: CheckoutPhotoInput['photoType'];
+  }> = [];
 
   for (const photo of photos) {
     const storagePath = makePhotoPath({
@@ -325,6 +340,123 @@ export async function createCheckoutOrder({
     subtotal: order.subtotal_inr,
     total: order.total_inr,
   };
+}
+
+export async function reuploadHandPhotosForOrder({
+  orderDatabaseId,
+  photos,
+}: {
+  orderDatabaseId: string;
+  photos: CheckoutPhotoInput[];
+}) {
+  if (!orderDatabaseId) {
+    throw new Error('Missing order ID.');
+  }
+
+  if (photos.length === 0) {
+    throw new Error('Please upload new hand photos first.');
+  }
+
+  const supabase = createClient();
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    throw new Error('Please login again before uploading photos.');
+  }
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('id, status, customer_id')
+    .eq('id', orderDatabaseId)
+    .eq('customer_id', authData.user.id)
+    .maybeSingle();
+
+  if (orderError) {
+    throw new Error(orderError.message);
+  }
+
+  if (!order) {
+    throw new Error('Order not found for this account.');
+  }
+
+  if (order.status !== 'photos_needed_again') {
+    throw new Error('This order is not currently requesting new photos.');
+  }
+
+  for (const photo of photos) {
+    const storagePath = makePhotoPath({
+      userId: authData.user.id,
+      orderId: orderDatabaseId,
+      photoType: photo.photoType,
+      fileName: photo.file.name,
+    });
+
+    const { error: uploadError } = await supabase.storage
+      .from('hand-photos')
+      .upload(storagePath, photo.file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: photo.file.type || 'image/jpeg',
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data: existingPhoto, error: existingPhotoError } = await supabase
+      .from('hand_photos')
+      .select('id')
+      .eq('order_id', orderDatabaseId)
+      .eq('uploaded_by', authData.user.id)
+      .eq('photo_type', photo.photoType)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingPhotoError) {
+      throw new Error(existingPhotoError.message);
+    }
+
+    if (existingPhoto?.id) {
+      const { error: updateError } = await supabase
+        .from('hand_photos')
+        .update({
+          storage_path: storagePath,
+          image_url: null,
+          review_status: 'pending',
+          admin_note: null,
+          uploaded_by: authData.user.id,
+        })
+        .eq('id', existingPhoto.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    } else {
+      const { error: insertError } = await supabase.from('hand_photos').insert({
+        order_id: orderDatabaseId,
+        uploaded_by: authData.user.id,
+        storage_path: storagePath,
+        image_url: null,
+        photo_type: photo.photoType,
+        review_status: 'pending',
+        admin_note: null,
+      });
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+    }
+  }
+
+  const { error: statusError } = await supabase.rpc('customer_mark_photos_reuploaded', {
+    target_order_id: orderDatabaseId,
+  });
+
+  if (statusError) {
+    throw new Error(statusError.message);
+  }
 }
 
 export async function getCustomerOrders(): Promise<StoredOrder[]> {

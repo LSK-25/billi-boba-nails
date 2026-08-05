@@ -3,6 +3,9 @@ export type StoredOrder = {
   trackingId: string;
   createdAt: string;
   status: string;
+  rawStatus?: string | null;
+  databaseOrderId?: string;
+  canReuploadPhotos?: boolean;
   accountEmail?: string;
   itemCount: number;
   subtotal: number;
@@ -56,7 +59,6 @@ export function readOrders(): StoredOrder[] {
   return safeParseOrders(window.localStorage.getItem(ORDER_HISTORY_STORAGE_KEY));
 }
 
-
 export function readOrdersForCustomer(email?: string): StoredOrder[] {
   if (!email?.trim()) return [];
 
@@ -109,8 +111,6 @@ function contactMatches(order: StoredOrder, rawContact: string) {
   const contact = normalizeText(rawContact);
   const contactPhone = normalizePhone(rawContact);
 
-  // Old preview orders created before this patch did not store contact info.
-  // Accept an identifier-only match for those local test orders so the preview remains usable.
   if (!order.customer?.email && !order.customer?.phone) return true;
 
   const emailMatches = normalizeText(order.customer?.email ?? '') === contact;
