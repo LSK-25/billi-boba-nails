@@ -1,3 +1,4 @@
+import SplashIntro from '@/components/SplashIntro';
 import type { Metadata } from 'next';
 import './globals.css';
 import AuthProvider from '@/components/AuthProvider';
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
+        <SplashIntro />
         <AuthProvider>
           <CartProvider>
             <Navbar />
