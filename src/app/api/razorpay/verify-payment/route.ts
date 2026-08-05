@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { sendOrderPaymentEmails } from '@/lib/order-emails';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -67,6 +68,12 @@ export async function POST(request: Request) {
         { error: error?.message ?? 'Could not mark payment as paid.' },
         { status: 400 },
       );
+    }
+
+    try {
+      await sendOrderPaymentEmails(orderNumber);
+    } catch (emailError) {
+      console.error('Order email sending failed:', emailError);
     }
 
     return NextResponse.json({ ok: true });
