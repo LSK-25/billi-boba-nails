@@ -2,27 +2,16 @@
 
 import { useEffect, useState } from 'react';
 
-const SPLASH_STORAGE_KEY = 'billi-boba-splash-seen';
-
 export default function SplashIntro() {
-  const [showSplash, setShowSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
-    const hasSeenSplash = window.sessionStorage.getItem(SPLASH_STORAGE_KEY);
-
-    if (hasSeenSplash) {
-      return;
-    }
-
-    setShowSplash(true);
-
     const leaveTimer = window.setTimeout(() => {
       setIsLeaving(true);
     }, 2300);
 
     const hideTimer = window.setTimeout(() => {
-      window.sessionStorage.setItem(SPLASH_STORAGE_KEY, 'true');
       setShowSplash(false);
     }, 2950);
 
