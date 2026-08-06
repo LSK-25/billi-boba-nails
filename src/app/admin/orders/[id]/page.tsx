@@ -23,7 +23,8 @@ export default function AdminOrderDetailPage() {
   const [statusValue, setStatusValue] = useState('order_confirmed');
   const [adminNote, setAdminNote] = useState('');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [photoMessage, setPhotoMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<AdminHandPhoto | null>(null);
 
   async function loadOrder() {
@@ -53,7 +54,7 @@ export default function AdminOrderDetailPage() {
     if (!order || saving) return;
 
     setSaving(true);
-    setMessage('');
+    setPhotoMessage('');
 
     try {
       await updateAdminPhotoReview({
@@ -62,10 +63,10 @@ export default function AdminOrderDetailPage() {
         note: adminNote,
       });
 
-      setMessage('Photos approved.');
+      setPhotoMessage('Photos approved.');
       await loadOrder();
     } catch (caughtError) {
-      setMessage(caughtError instanceof Error ? caughtError.message : 'Could not approve photos.');
+      setPhotoMessage(caughtError instanceof Error ? caughtError.message : 'Could not approve photos.');
     } finally {
       setSaving(false);
     }
@@ -75,7 +76,7 @@ export default function AdminOrderDetailPage() {
   if (!order || saving) return;
 
   setSaving(true);
-  setMessage('');
+  setPhotoMessage('');
 
   const requestNote = adminNote || 'Please upload clearer hand photos with the coin reference.';
 
@@ -104,9 +105,9 @@ export default function AdminOrderDetailPage() {
     } | null;
 
     if (emailResponse.ok && emailPayload?.sent) {
-      setMessage('New photos requested. Customer email sent.');
+      setPhotoMessage('New photos requested. Customer email sent.');
     } else {
-      setMessage(
+      setPhotoMessage(
         `New photos requested. Email not sent: ${
           emailPayload?.message || emailPayload?.error || 'Check Resend settings.'
         }`,
@@ -115,7 +116,7 @@ export default function AdminOrderDetailPage() {
 
     await loadOrder();
   } catch (caughtError) {
-    setMessage(caughtError instanceof Error ? caughtError.message : 'Could not request new photos.');
+    setPhotoMessage(caughtError instanceof Error ? caughtError.message : 'Could not request new photos.');
   } finally {
     setSaving(false);
   }
@@ -125,7 +126,7 @@ export default function AdminOrderDetailPage() {
     if (!order || saving) return;
 
     setSaving(true);
-    setMessage('');
+    setStatusMessage('');
 
     try {
       await updateAdminOrderStatus({
@@ -134,10 +135,10 @@ export default function AdminOrderDetailPage() {
         note: adminNote,
       });
 
-      setMessage('Order status updated.');
+      setStatusMessage('Order status updated.');
       await loadOrder();
     } catch (caughtError) {
-      setMessage(caughtError instanceof Error ? caughtError.message : 'Could not update order status.');
+      setStatusMessage(caughtError instanceof Error ? caughtError.message : 'Could not update order status.');
     } finally {
       setSaving(false);
     }
@@ -329,6 +330,11 @@ export default function AdminOrderDetailPage() {
                   Message customer
                 </Link>
               </div>
+              {photoMessage && (
+  <div className="mt-4 rounded-[1.35rem] border border-white/60 bg-white/55 p-4 text-sm font-bold leading-6 text-[#6d5871]">
+    {photoMessage}
+  </div>
+)}
             </div>
           </div>
 
@@ -377,9 +383,9 @@ export default function AdminOrderDetailPage() {
                 />
               </label>
 
-              {message && (
+              {statusMessage && (
                 <div className="mt-4 rounded-[1.35rem] border border-white/60 bg-white/55 p-4 text-sm font-bold leading-6 text-[#6d5871]">
-                  {message}
+                  {statusMessage}
                 </div>
               )}
 
