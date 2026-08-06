@@ -72,26 +72,54 @@ export default function AdminOrderDetailPage() {
   }
 
   async function handleRequestNewPhotos() {
-    if (!order || saving) return;
+  if (!order || saving) return;
 
-    setSaving(true);
-    setMessage('');
+  setSaving(true);
+  setMessage('');
 
-    try {
-      await updateAdminPhotoReview({
+  const requestNote = adminNote || 'Please upload clearer hand photos with the coin reference.';
+
+  try {
+    await updateAdminPhotoReview({
+      orderId: order.id,
+      reviewStatus: 'request_reupload',
+      note: requestNote,
+    });
+
+    const emailResponse = await fetch('/api/admin/photo-request-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         orderId: order.id,
-        reviewStatus: 'needs_reupload',
-        note: adminNote || 'Please upload clearer hand photos with the coin reference.',
-      });
+        note: requestNote,
+      }),
+    });
 
-      setMessage('New photos requested.');
-      await loadOrder();
-    } catch (caughtError) {
-      setMessage(caughtError instanceof Error ? caughtError.message : 'Could not request new photos.');
-    } finally {
-      setSaving(false);
+    const emailPayload = (await emailResponse.json().catch(() => null)) as {
+      sent?: boolean;
+      message?: string;
+      error?: string;
+    } | null;
+
+    if (emailResponse.ok && emailPayload?.sent) {
+      setMessage('New photos requested. Customer email sent.');
+    } else {
+      setMessage(
+        `New photos requested. Email not sent: ${
+          emailPayload?.message || emailPayload?.error || 'Check Resend settings.'
+        }`,
+      );
     }
+
+    await loadOrder();
+  } catch (caughtError) {
+    setMessage(caughtError instanceof Error ? caughtError.message : 'Could not request new photos.');
+  } finally {
+    setSaving(false);
   }
+}
 
   async function handleSaveStatus() {
     if (!order || saving) return;

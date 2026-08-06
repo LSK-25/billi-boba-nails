@@ -396,28 +396,42 @@ export async function updateAdminPhotoReview({
   note,
 }: {
   orderId: string;
-  reviewStatus: 'approved' | 'needs_reupload';
+  reviewStatus: 'approved' | 'request_reupload';
   note?: string;
 }) {
   const supabase = createClient();
+  const cleanNote = note?.trim() || null;
 
-  const { error: photoError } = await supabase
+  if (reviewStatus === 'approved') {
+    const { error: photoError } = await supabase
+      .from('hand_photos')
+      .update({
+        review_status: 'approved',
+        admin_note: cleanNote,
+      })
+      .eq('order_id', orderId);
+
+    if (photoError) {
+      throw new Error(photoError.message);
+    }
+
+    return;
+  }
+
+  const { error: noteError } = await supabase
     .from('hand_photos')
     .update({
-      review_status: reviewStatus,
-      admin_note: note?.trim() || null,
+      admin_note: cleanNote,
     })
     .eq('order_id', orderId);
 
-  if (photoError) {
-    throw new Error(photoError.message);
+  if (noteError) {
+    throw new Error(noteError.message);
   }
 
-  if (reviewStatus === 'needs_reupload') {
-    await updateAdminOrderStatus({
-      orderId,
-      status: 'photos_needed_again',
-      note: note || 'Requested new hand photos from customer.',
-    });
-  }
+  await updateAdminOrderStatus({
+    orderId,
+    status: 'photos_needed_again',
+    note: cleanNote || 'Requested new hand photos from customer.',
+  });
 }
