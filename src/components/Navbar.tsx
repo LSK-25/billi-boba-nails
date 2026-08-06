@@ -45,6 +45,25 @@ function CartIcon() {
   );
 }
 
+function MenuIcon({ open }: { open: boolean }) {
+  if (open) {
+    return (
+      <span className="relative block h-5 w-5" aria-hidden="true">
+        <span className="absolute left-0 top-1/2 h-0.5 w-5 -translate-y-1/2 rotate-45 rounded-full bg-current" />
+        <span className="absolute left-0 top-1/2 h-0.5 w-5 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
+      </span>
+    );
+  }
+
+  return (
+    <span className="grid h-5 w-5 gap-1" aria-hidden="true">
+      <span className="h-0.5 w-5 rounded-full bg-current" />
+      <span className="h-0.5 w-5 rounded-full bg-current" />
+      <span className="h-0.5 w-5 rounded-full bg-current" />
+    </span>
+  );
+}
+
 function CartButton({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   const { count } = useCart();
@@ -76,7 +95,6 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
-  const scrollYRef = useRef(0);
   const [activePill, setActivePill] = useState({ left: 4, width: 72, ready: false });
 
   useLayoutEffect(() => {
@@ -100,37 +118,6 @@ export default function Navbar() {
   }, [pathname]);
 
   useEffect(() => {
-    if (!open) return;
-
-    scrollYRef.current = window.scrollY;
-
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const originalWidth = document.body.style.width;
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollYRef.current}px`;
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
-
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-
-    return () => {
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      document.body.style.width = originalWidth;
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
-      window.scrollTo(0, scrollYRef.current);
-    };
-  }, [open]);
-
-  useEffect(() => {
     const closeDesktopMenu = () => {
       if (window.innerWidth >= 1024) {
         setOpen(false);
@@ -140,6 +127,10 @@ export default function Navbar() {
     window.addEventListener('resize', closeDesktopMenu);
     return () => window.removeEventListener('resize', closeDesktopMenu);
   }, []);
+
+  function closeMenu() {
+    setOpen(false);
+  }
 
   function handleSignOut() {
     signOut();
@@ -159,6 +150,7 @@ export default function Navbar() {
               B&amp;B
             </span>
           </div>
+
           <div className="min-w-0 leading-none">
             <div className="brand-wordmark truncate font-display text-[1.22rem] font-black tracking-[-0.065em] md:text-[1.6rem]">
               BILLi&amp;BoBA
@@ -182,6 +174,7 @@ export default function Navbar() {
             }}
             aria-hidden="true"
           />
+
           {navItems.map((item) => {
             const isActive = pathname === item.href;
 
@@ -203,6 +196,7 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <CartButton />
+
           {user ? (
             <>
               <Link href={accountHref} className="btn-secondary px-4 py-2 text-sm">
@@ -221,26 +215,28 @@ export default function Navbar() {
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <CartButton mobile />
+
           <button
+            type="button"
             className="grid h-11 w-11 place-items-center rounded-full border border-white/55 bg-white/45 text-[#33233b] shadow-[0_14px_42px_rgba(139,101,190,.13),inset_0_1px_0_rgba(255,255,255,.78)] backdrop-blur-2xl transition hover:bg-white/75 hover:text-[#7c58d7]"
             onClick={() => setOpen((value) => !value)}
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >
-            <span className="text-xl">{open ? '×' : '☰'}</span>
+            <MenuIcon open={open} />
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="page-shell max-h-[calc(100vh-5rem)] overflow-y-auto pb-4 lg:hidden">
-          <div className="liquid-glass grid gap-2 rounded-3xl p-3">
+        <div className="page-shell pb-4 lg:hidden">
+          <div className="max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-[2rem] border border-white/55 bg-[#fff8fc] p-3 shadow-[0_24px_80px_rgba(74,49,78,.18)]">
             <div className="grid gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={closeMenu}
                   className="rounded-2xl px-4 py-3 text-sm font-bold text-[#3b3040] hover:bg-white/70"
                 >
                   {item.label}
@@ -249,17 +245,19 @@ export default function Navbar() {
             </div>
 
             {user && (
-              <div className="mt-2 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
+              <div className="mt-3 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
                 <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">
                   Signed in
                 </p>
+
                 <Link
                   href={accountHref}
-                  onClick={() => setOpen(false)}
+                  onClick={closeMenu}
                   className="mt-2 block rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65"
                 >
                   Open {accountLabel.toLowerCase()}
                 </Link>
+
                 <button
                   type="button"
                   onClick={handleSignOut}
@@ -270,14 +268,15 @@ export default function Navbar() {
               </div>
             )}
 
-            <div className="mt-2 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
+            <div className="mt-3 rounded-[1.35rem] border border-[#d8ccff55] bg-[linear-gradient(135deg,rgba(255,232,245,.58),rgba(238,230,255,.7))] p-3">
               <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-[#8b6c98]">Support</p>
+
               <div className="mt-2 grid gap-1">
                 {mobileSupportItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setOpen(false)}
+                    onClick={closeMenu}
                     className="rounded-2xl px-3 py-2.5 text-sm font-bold text-[#3b3040] hover:bg-white/65"
                   >
                     {item.label}
@@ -287,7 +286,7 @@ export default function Navbar() {
             </div>
 
             {!user && (
-              <Link href="/login" onClick={() => setOpen(false)} className="btn-primary mt-2 py-3 text-sm">
+              <Link href="/login" onClick={closeMenu} className="btn-primary mt-3 py-3 text-sm">
                 Login / Signup
               </Link>
             )}
