@@ -358,3 +358,45 @@ export async function setAdminProductStatus(productId: string, status: 'active' 
     throw new Error(error.message);
   }
 }
+export async function deleteAdminProduct(product: AdminProduct) {
+  const supabase = createClient();
+
+  const { count, error: orderCheckError } = await supabase
+    .from('order_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', product.id);
+
+  if (orderCheckError) {
+    throw new Error(orderCheckError.message);
+  }
+
+  if ((count ?? 0) > 0) {
+    throw new Error('This product already has orders. Archive it instead so order history stays safe.');
+  }
+
+  const storagePaths = product.images
+    .map((image) => image.storagePath)
+    .filter((path): path is string => Boolean(path));
+
+  if (storagePaths.length > 0) {
+    await supabase.storage.from('product-images').remove(storagePaths);
+  }
+
+  const { error: imageDeleteError } = await supabase
+    .from('product_images')
+    .delete()
+    .eq('product_id', product.id);
+
+  if (imageDeleteError) {
+    throw new Error(imageDeleteError.message);
+  }
+
+  const { error: productDeleteError } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', product.id);
+
+  if (productDeleteError) {
+    throw new Error(productDeleteError.message);
+  }
+}
