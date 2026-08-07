@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import ProductCard from '@/components/ProductCard';
@@ -19,7 +19,7 @@ export default function FilterRail({ sets = nailSets }: { sets?: NailSet[] }) {
     return ['All', ...values];
   }, [sets]);
 
-  const priceBandValues = useMemo(() => ['All', 'Under ₹800', '₹800–₹1100', 'Above ₹1100'], []);
+  const priceBandValues = useMemo(() => ['All', 'Under Rs 800', 'Rs 800-Rs 1100', 'Above Rs 1100'], []);
 
   const filteredSets = useMemo(() => {
     return sets.filter((set) => {
@@ -40,9 +40,9 @@ export default function FilterRail({ sets = nailSets }: { sets?: NailSet[] }) {
       const finishMatch = finish === 'All' || set.finish === finish;
       const priceMatch =
         price === 'All' ||
-        (price === 'Under ₹800' && set.price < 800) ||
-        (price === '₹800–₹1100' && set.price >= 800 && set.price <= 1100) ||
-        (price === 'Above ₹1100' && set.price > 1100);
+        (price === 'Under Rs 800' && set.price < 800) ||
+        (price === 'Rs 800-Rs 1100' && set.price >= 800 && set.price <= 1100) ||
+        (price === 'Above Rs 1100' && set.price > 1100);
 
       return textMatch && categoryMatch && lengthMatch && shapeMatch && finishMatch && priceMatch;
     });
@@ -84,7 +84,7 @@ export default function FilterRail({ sets = nailSets }: { sets?: NailSet[] }) {
           onClick={() => setIsFilterOpen(true)}
           className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[#c9a5ff66] bg-[linear-gradient(135deg,rgba(255,232,244,.88),rgba(236,226,255,.92))] px-4 py-2.5 text-xs font-black text-[#4a3059] shadow-[0_14px_34px_rgba(159,115,184,0.18)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(159,115,184,0.24)]"
         >
-          <span className="text-sm">⚙</span>
+          <span className="text-sm">Filter</span>
           Filters
           {activeFilterCount > 0 && (
             <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#5a3f6d] px-1.5 text-[10px] text-white">{activeFilterCount}</span>
@@ -218,7 +218,7 @@ function FilterContent({
               className="grid h-9 w-9 place-items-center rounded-full border border-[#cba8ff55] bg-white/50 text-lg font-black text-[#5a3f6d] shadow-sm backdrop-blur-xl"
               aria-label="Close filters"
             >
-              ×
+              x
             </button>
           )}
         </div>

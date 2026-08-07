@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState, type FormEventHandler } from 'react';
 import { useRouter } from 'next/navigation';
@@ -272,7 +272,7 @@ export default function AdminProductForm({
           <div className="mt-5 rounded-[1.4rem] border border-white/60 bg-white/45 p-4">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8d738f]">Preview</p>
             <p className="mt-2 font-display text-3xl font-black tracking-[-0.06em]">{name || 'Product name'}</p>
-            <p className="mt-1 text-sm font-bold text-[#6d5871]">{designCode || 'BNB-CODE'} • {previewPrice}</p>
+            <p className="mt-1 text-sm font-bold text-[#6d5871]">{designCode || 'BNB-CODE'}  -  {previewPrice}</p>
           </div>
 
           {message && (

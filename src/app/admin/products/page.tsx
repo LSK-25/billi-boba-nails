@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -66,7 +66,7 @@ export default function AdminProductsPage() {
                   <div>
                     <p className="font-black text-[#34263c]">{set.name}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-[#8a728d]">
-                      {set.designCode} • {set.lengthOptions.join(', ')} • {set.shape}
+                      {set.designCode}  -  {set.lengthOptions.join(', ')}  -  {set.shape}
                     </p>
                   </div>
                 </div>

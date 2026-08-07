@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import type { NailSet } from '@/types';
 import { formatPrice } from '@/lib/utils';
 
@@ -35,7 +35,7 @@ export default function ProductCard({ set }: { set: NailSet }) {
           </div>
 
           <div className="absolute bottom-4 left-4 right-4 rounded-[1.2rem] border border-white/70 bg-white/62 p-3 text-xs font-bold text-[#67556a] backdrop-blur-xl">
-            {set.finish} • {set.shape} • {set.productionTime}
+            {set.finish}  -  {set.shape}  -  {set.productionTime}
           </div>
         </div>
 
@@ -52,10 +52,11 @@ export default function ProductCard({ set }: { set: NailSet }) {
 
           <div className="mt-5 flex items-center justify-between gap-3">
             <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">View set</span>
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#241a29] text-white transition group-hover:translate-x-1">→</span>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#241a29] text-white transition group-hover:translate-x-1">{'->'}</span>
           </div>
         </div>
       </Link>
     </article>
   );
 }
+
