@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const siteUrl = 'https://billi-boba-nails.vercel.app';
+const siteUrl = 'https://billiandboba.vercel.app';
 
 const routes = [
   '',

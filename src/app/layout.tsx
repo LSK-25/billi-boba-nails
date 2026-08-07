@@ -6,7 +6,7 @@ import CartProvider from '@/components/CartProvider';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 
-const siteUrl = new URL('https://billi-boba-nails.vercel.app');
+const siteUrl = new URL('https://billiandboba.vercel.app');
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
