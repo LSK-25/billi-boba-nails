@@ -18,17 +18,12 @@ export default async function SetPage({ params }: { params: Promise<{ id: string
   return (
     <section className="page-shell grid gap-10 py-14 lg:grid-cols-[1fr_.82fr]">
       <ProductGallery
-        name={set.name}
-        code={set.code}
-        gallery={gallery}
-        tone={set.tone}
-        accentTone={set.accentTone}
-        details={[
-          { label: 'Length', value: set.length },
-          { label: 'Shape', value: set.shape },
-          { label: 'Finish', value: set.finish },
-        ]}
-      />
+  name={set.name}
+  code={set.code}
+  gallery={gallery}
+  tone={set.tone}
+  accentTone={set.accentTone}
+/>
 
       <div className="self-center">
         <span className="pill">

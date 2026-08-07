@@ -2,18 +2,12 @@
 
 import { useState } from 'react';
 
-type ProductGalleryDetail = {
-  label: string;
-  value: string;
-};
-
 type ProductGalleryProps = {
   name: string;
   code: string;
   gallery: string[];
   tone: string;
   accentTone: string;
-  details: ProductGalleryDetail[];
 };
 
 export default function ProductGallery({
@@ -22,12 +16,22 @@ export default function ProductGallery({
   gallery,
   tone,
   accentTone,
-  details,
 }: ProductGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
 
   const selectedImage = gallery[selectedIndex] ?? gallery[0] ?? null;
+  const hasMultipleImages = gallery.length > 1;
+
+  function showPreviousImage() {
+    if (!hasMultipleImages) return;
+    setSelectedIndex((current) => (current === 0 ? gallery.length - 1 : current - 1));
+  }
+
+  function showNextImage() {
+    if (!hasMultipleImages) return;
+    setSelectedIndex((current) => (current === gallery.length - 1 ? 0 : current + 1));
+  }
 
   return (
     <>
@@ -38,7 +42,7 @@ export default function ProductGallery({
         >
           <div className="noise-overlay" />
 
-          <div className="absolute left-6 top-6 z-10 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur">
+          <div className="absolute left-4 top-4 z-20 rounded-full border border-white/70 bg-white/75 px-4 py-2 text-[0.7rem] font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur md:left-6 md:top-6">
             {code}
           </div>
 
@@ -68,31 +72,50 @@ export default function ProductGallery({
           )}
 
           {selectedImage && (
-            <div className="absolute right-6 top-6 z-10 rounded-full border border-white/70 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur">
+            <button
+              type="button"
+              onClick={() => setZoomOpen(true)}
+              className="absolute right-4 top-4 z-20 rounded-full border border-white/70 bg-white/75 px-4 py-2 text-[0.7rem] font-black uppercase tracking-[0.18em] text-[#6e5971] backdrop-blur md:right-6 md:top-6"
+            >
               Tap to zoom
-            </div>
+            </button>
           )}
 
-          <div className="absolute bottom-6 left-6 right-6 z-10 grid gap-3 rounded-[1.6rem] border border-white/70 bg-white/62 p-5 backdrop-blur-xl md:grid-cols-3">
-            {details.map((item) => (
-              <div key={item.label}>
-                <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#8f7492]">
-                  {item.label}
-                </p>
-                <p className="font-black text-[#2c2131]">{item.value}</p>
+          {hasMultipleImages && (
+            <>
+              <button
+                type="button"
+                onClick={showPreviousImage}
+                className="absolute left-4 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-white/75 text-xl font-black text-[#3a2a42] shadow-[0_14px_34px_rgba(72,50,82,.16)] backdrop-blur-xl transition hover:-translate-x-0.5 md:left-6"
+                aria-label="Previous product photo"
+              >
+                {'<'}
+              </button>
+
+              <button
+                type="button"
+                onClick={showNextImage}
+                className="absolute right-4 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-white/75 text-xl font-black text-[#3a2a42] shadow-[0_14px_34px_rgba(72,50,82,.16)] backdrop-blur-xl transition hover:translate-x-0.5 md:right-6"
+                aria-label="Next product photo"
+              >
+                {'>'}
+              </button>
+
+              <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/70 bg-white/75 px-4 py-2 text-xs font-black text-[#6e5971] shadow-sm backdrop-blur">
+                {selectedIndex + 1} / {gallery.length}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
         {gallery.length > 1 && (
-          <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-4">
+          <div className="mt-4 flex gap-3 overflow-x-auto rounded-[1.6rem] border border-white/60 bg-white/35 p-3">
             {gallery.map((imageUrl, index) => (
               <button
                 key={imageUrl}
                 type="button"
                 onClick={() => setSelectedIndex(index)}
-                className={`overflow-hidden rounded-[1.2rem] border bg-white/45 transition ${
+                className={`h-24 w-28 shrink-0 overflow-hidden rounded-[1.2rem] border bg-white/45 transition md:h-28 md:w-36 ${
                   selectedIndex === index
                     ? 'border-[#8c6fe8] ring-2 ring-[#d9c8ff]'
                     : 'border-white/70 hover:-translate-y-0.5 hover:bg-white/70'
@@ -103,7 +126,7 @@ export default function ProductGallery({
                 <img
                   src={imageUrl}
                   alt={`${name} gallery ${index + 1}`}
-                  className="h-24 w-full object-cover md:h-28"
+                  className="h-full w-full object-cover"
                 />
               </button>
             ))}
