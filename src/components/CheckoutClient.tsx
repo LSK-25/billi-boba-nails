@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -334,7 +334,7 @@ export default function CheckoutClient() {
         key: razorpayPayment.keyId,
         amount: razorpayPayment.amount,
         currency: razorpayPayment.currency,
-        name: 'BILLi&BoBA NAILS',
+        name: 'BILLi BoBA NAILS',
         description: `Order ${createdOrder.orderId}`,
         order_id: razorpayPayment.razorpayOrderId,
         prefill: {
@@ -411,7 +411,7 @@ export default function CheckoutClient() {
       </h1>
 
       <p className="mt-4 max-w-2xl text-base leading-8 text-[#756778]">
-        Your order will be saved first, then Razorpay will open for secure test payment.
+        Your order will be saved first, then Razorpay will open for secure payment.
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
@@ -508,7 +508,7 @@ export default function CheckoutClient() {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Hand photos</p>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#756778]">
-                  Before uploading, open the photo guide once. Use a clear top-view photo and place a ₹10 coin beside
+                  Before uploading, open the photo guide once. Use a clear top-view photo and place a â‚¹10 coin beside
                   your nails as the size reference.
                 </p>
               </div>
@@ -519,7 +519,7 @@ export default function CheckoutClient() {
             </div>
 
             <div className="mt-5 rounded-[1.35rem] border border-[#d8ccff66] bg-[linear-gradient(135deg,rgba(255,232,245,.62),rgba(238,230,255,.72))] p-4 text-sm font-semibold leading-6 text-[#66566c] backdrop-blur-2xl">
-              Photo checklist: full hand visible, taken directly from above, good lighting, no blur, and one ₹10 coin
+              Photo checklist: full hand visible, taken directly from above, good lighting, no blur, and one â‚¹10 coin
               placed beside the nails.
             </div>
 
@@ -570,7 +570,7 @@ export default function CheckoutClient() {
                       </h3>
 
                       <p className="mt-2 text-sm font-bold text-[#6d5871]">
-                        {item.length} • Qty {item.quantity}
+                        {item.length} â€¢ Qty {item.quantity}
                       </p>
                     </div>
 
@@ -594,7 +594,7 @@ export default function CheckoutClient() {
 
             <div className="flex justify-between">
               <span>Shipping</span>
-              <span>₹0 for now</span>
+              <span>â‚¹0 for now</span>
             </div>
 
             <div className="flex justify-between border-t border-[#4a314e1c] pt-3 text-[#241a29]">
@@ -604,7 +604,7 @@ export default function CheckoutClient() {
           </div>
 
           <p className="mt-5 rounded-[1.4rem] border border-[#4a314e1c] bg-white/45 p-4 text-xs font-semibold leading-5 text-[#8a7a8e]">
-            Test payment opens through Razorpay Checkout. Payment is marked paid only after server signature
+            Payment opens through Razorpay Checkout. Payment is marked paid only after server signature
             verification.
           </p>
         </aside>
@@ -612,3 +612,4 @@ export default function CheckoutClient() {
     </section>
   );
 }
+
