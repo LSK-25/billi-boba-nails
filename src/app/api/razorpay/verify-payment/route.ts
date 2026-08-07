@@ -2,15 +2,40 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { sendOrderPaymentEmails } from '@/lib/order-emails';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
 type VerifyPaymentBody = {
-  orderNumber?: string;
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
-  razorpay_signature?: string;
+  orderNumber?: unknown;
+  razorpay_order_id?: unknown;
+  razorpay_payment_id?: unknown;
+  razorpay_signature?: unknown;
 };
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+function cleanString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isValidOrderNumber(value: string) {
+  return /^[a-zA-Z0-9_-]{3,60}$/.test(value);
+}
+
+function isValidRazorpayOrderId(value: string) {
+  return /^order_[a-zA-Z0-9]{8,40}$/.test(value);
+}
+
+function isValidRazorpayPaymentId(value: string) {
+  return /^pay_[a-zA-Z0-9]{8,40}$/.test(value);
+}
+
+function isValidRazorpaySignature(value: string) {
+  return /^[a-fA-F0-9]{64}$/.test(value);
+}
 
 function safeCompare(left: string, right: string) {
   const leftBuffer = Buffer.from(left);
@@ -23,20 +48,47 @@ function safeCompare(left: string, right: string) {
 
 export async function POST(request: Request) {
   try {
+        const limitResult = rateLimit({
+      key: `razorpay:verify:${getClientIp(request)}`,
+      limit: 12,
+      windowMs: 60 * 1000,
+    });
+
+    if (!limitResult.ok) {
+      return NextResponse.json(
+        { error: 'Too many verification attempts. Please wait a minute and try again.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(limitResult.retryAfterSeconds),
+          },
+        },
+      );
+    }
     const body = (await request.json()) as VerifyPaymentBody;
 
-    const orderNumber = body.orderNumber?.trim();
-    const razorpayOrderId = body.razorpay_order_id?.trim();
-    const razorpayPaymentId = body.razorpay_payment_id?.trim();
-    const razorpaySignature = body.razorpay_signature?.trim();
+    const orderNumber = cleanString(body.orderNumber);
+    const razorpayOrderId = cleanString(body.razorpay_order_id);
+    const razorpayPaymentId = cleanString(body.razorpay_payment_id);
+    const razorpaySignature = cleanString(body.razorpay_signature);
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!orderNumber || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return NextResponse.json({ error: 'Missing payment verification details.' }, { status: 400 });
+      return jsonError('Missing payment verification details.', 400);
+    }
+
+    if (
+      !isValidOrderNumber(orderNumber) ||
+      !isValidRazorpayOrderId(razorpayOrderId) ||
+      !isValidRazorpayPaymentId(razorpayPaymentId) ||
+      !isValidRazorpaySignature(razorpaySignature)
+    ) {
+      return jsonError('Invalid payment verification details.', 400);
     }
 
     if (!keySecret) {
-      return NextResponse.json({ error: 'Missing Razorpay secret key.' }, { status: 500 });
+      console.error('Missing RAZORPAY_KEY_SECRET.');
+      return jsonError('Payment verification is not configured.', 500);
     }
 
     const expectedSignature = crypto
@@ -45,15 +97,21 @@ export async function POST(request: Request) {
       .digest('hex');
 
     if (!safeCompare(expectedSignature, razorpaySignature)) {
-      return NextResponse.json({ error: 'Payment signature verification failed.' }, { status: 400 });
+      console.error('Razorpay signature mismatch:', {
+        orderNumber,
+        razorpayOrderId,
+        razorpayPaymentId,
+      });
+
+      return jsonError('Payment verification failed.', 400);
     }
 
     const supabase = await createServerSupabaseClient();
 
-    const { data: authData } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
 
-    if (!authData.user) {
-      return NextResponse.json({ error: 'Please login again.' }, { status: 401 });
+    if (authError || !authData.user) {
+      return jsonError('Please login again.', 401);
     }
 
     const { data: markedPaid, error } = await supabase.rpc('mark_razorpay_payment_paid', {
@@ -64,10 +122,8 @@ export async function POST(request: Request) {
     });
 
     if (error || !markedPaid) {
-      return NextResponse.json(
-        { error: error?.message ?? 'Could not mark payment as paid.' },
-        { status: 400 },
-      );
+      console.error('Mark Razorpay payment paid failed:', error?.message);
+      return jsonError('Could not confirm this payment. Please contact the studio.', 400);
     }
 
     try {
@@ -78,7 +134,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (caughtError) {
-    const message = caughtError instanceof Error ? caughtError.message : 'Could not verify payment.';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('Verify Razorpay payment route failed:', caughtError);
+    return jsonError('Could not verify payment. Please contact the studio if money was deducted.', 500);
   }
 }

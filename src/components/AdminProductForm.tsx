@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo, useState, type FormEventHandler } from 'react';
+import { useMemo, useState, type ChangeEvent, type FormEventHandler } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createAdminProduct,
@@ -10,6 +10,7 @@ import {
   type AdminProduct,
   type AdminProductInput,
 } from '@/lib/admin-products';
+import { validateImageFile } from '@/lib/checkout-validation';
 import { formatPrice } from '@/lib/utils';
 import type { PreferredLength } from '@/types';
 
@@ -75,6 +76,36 @@ export default function AdminProductForm({
       setSlug(makeProductSlug(value));
     }
   }
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+  const selectedFiles = Array.from(event.currentTarget.files ?? []);
+
+  setMessage('');
+
+  if (selectedFiles.length === 0) {
+    setFiles([]);
+    return;
+  }
+
+  if (selectedFiles.length > 8) {
+    event.currentTarget.value = '';
+    setFiles([]);
+    setMessage('Please upload 8 or fewer product images at once.');
+    return;
+  }
+
+  for (const file of selectedFiles) {
+    const validationError = validateImageFile(file, file.name);
+
+    if (validationError) {
+      event.currentTarget.value = '';
+      setFiles([]);
+      setMessage(validationError);
+      return;
+    }
+  }
+
+  setFiles(selectedFiles);
+}
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
@@ -235,7 +266,7 @@ export default function AdminProductForm({
               type="file"
               accept="image/*"
               multiple
-              onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+              onChange={handleImageChange}
             />
           </label>
 

@@ -7,6 +7,7 @@ import type { ChangeEvent, FormEventHandler } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { useCart } from '@/components/CartProvider';
 import { createCheckoutOrder } from '@/lib/commerce-orders';
+import { validateImageFile } from '@/lib/checkout-validation';
 import { savePreviewOrder } from '@/lib/preview-orders';
 import type { StoredOrder } from '@/lib/preview-orders';
 import { formatPrice } from '@/lib/utils';
@@ -67,7 +68,12 @@ declare global {
   }
 }
 
-function readPhoto(event: ChangeEvent<HTMLInputElement>, onReady: (preview: PhotoPreview | null) => void) {
+function readPhoto(
+  event: ChangeEvent<HTMLInputElement>,
+  label: string,
+  onReady: (preview: PhotoPreview | null) => void,
+  onError: (message: string) => void,
+) {
   const file = event.target.files?.[0];
 
   if (!file) {
@@ -75,8 +81,12 @@ function readPhoto(event: ChangeEvent<HTMLInputElement>, onReady: (preview: Phot
     return;
   }
 
-  if (!file.type.startsWith('image/')) {
+  const validationError = validateImageFile(file, label);
+
+  if (validationError) {
+    event.target.value = '';
     onReady(null);
+    onError(validationError);
     return;
   }
 
@@ -165,11 +175,13 @@ function PhotoUploadBox({
   label,
   preview,
   onChange,
+  onError,
   required,
 }: {
   label: string;
   preview: PhotoPreview | null;
   onChange: (preview: PhotoPreview | null) => void;
+  onError: (message: string) => void;
   required?: boolean;
 }) {
   return (
@@ -179,7 +191,7 @@ function PhotoUploadBox({
         accept="image/*"
         className="hidden"
         required={required}
-        onChange={(event) => readPhoto(event, onChange)}
+        onChange={(event) => readPhoto(event, label, onChange, onError)}
       />
 
       {preview ? (
@@ -508,7 +520,7 @@ export default function CheckoutClient() {
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8d738f]">Hand photos</p>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#756778]">
-                  Before uploading, open the photo guide once. Use a clear top-view photo and place a â‚¹10 coin beside
+                  Before uploading, open the photo guide once. Use a clear top-view photo and place a Rs.10 coin beside
                   your nails as the size reference.
                 </p>
               </div>
@@ -519,17 +531,17 @@ export default function CheckoutClient() {
             </div>
 
             <div className="mt-5 rounded-[1.35rem] border border-[#d8ccff66] bg-[linear-gradient(135deg,rgba(255,232,245,.62),rgba(238,230,255,.72))] p-4 text-sm font-semibold leading-6 text-[#66566c] backdrop-blur-2xl">
-              Photo checklist: full hand visible, taken directly from above, good lighting, no blur, and one â‚¹10 coin
+              Photo checklist: full hand visible, taken directly from above, good lighting, no blur, and one Rs.10 coin
               placed beside the nails.
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <PhotoUploadBox label="Left hand photo with coin" preview={leftHand} onChange={setLeftHand} required />
-              <PhotoUploadBox label="Right hand photo with coin" preview={rightHand} onChange={setRightHand} required />
+             <PhotoUploadBox label="Left hand photo with coin" preview={leftHand} onChange={setLeftHand} onError={setSubmitError} required />
+<PhotoUploadBox label="Right hand photo with coin" preview={rightHand} onChange={setRightHand} onError={setSubmitError} required />
             </div>
 
             <div className="mt-4">
-              <PhotoUploadBox label="Optional length reference" preview={lengthReference} onChange={setLengthReference} />
+              <PhotoUploadBox label="Optional length reference" preview={lengthReference} onChange={setLengthReference} onError={setSubmitError} />
             </div>
           </div>
 
@@ -594,7 +606,7 @@ export default function CheckoutClient() {
 
             <div className="flex justify-between">
               <span>Shipping</span>
-              <span>â‚¹0 for now</span>
+              <span>Rs.0 for now</span>
             </div>
 
             <div className="flex justify-between border-t border-[#4a314e1c] pt-3 text-[#241a29]">

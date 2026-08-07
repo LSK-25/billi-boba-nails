@@ -1,3 +1,4 @@
+import { validateImageFile } from '@/lib/checkout-validation';
 import { createClient } from '@/lib/supabase/client';
 import type { PreferredLength } from '@/types';
 
@@ -189,9 +190,24 @@ async function uploadProductImages({
 }) {
   if (files.length === 0) return;
 
+  if (files.length > 8) {
+    throw new Error('Please upload 8 or fewer product images at once.');
+  }
+
+  if (existingImageCount + files.length > 12) {
+    throw new Error('A product can have a maximum of 12 images.');
+  }
+
+  for (const file of files) {
+    const validationError = validateImageFile(file, file.name);
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+  }
+
   const supabase = createClient();
   const rows = [];
-
   for (const [index, file] of files.entries()) {
     const storagePath = `${productId}/${Date.now()}-${index}-${cleanFileName(file.name)}`;
 

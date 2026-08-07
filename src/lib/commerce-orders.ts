@@ -1,3 +1,4 @@
+import { validateCheckoutFields, validateImageFile } from '@/lib/checkout-validation';
 import { createClient } from '@/lib/supabase/client';
 import type { StoredOrder } from '@/lib/preview-orders';
 import type { CartLine } from '@/types';
@@ -23,6 +24,7 @@ export type CheckoutPhotoInput = {
 };
 
 export type CreatedCheckoutOrder = {
+  orderUuid: string;
   orderId: string;
   trackingId: string;
   createdAt: string;
@@ -110,6 +112,24 @@ function getStatusLabel(status?: string | null) {
   }
 }
 
+function normalizeCreatedCheckoutOrder(value: unknown): CreatedCheckoutOrder {
+  const order = value as Partial<CreatedCheckoutOrder> | null;
+
+  if (!order?.orderUuid || !order.orderId || !order.trackingId || !order.createdAt) {
+    throw new Error('Could not create order.');
+  }
+
+  return {
+    orderUuid: order.orderUuid,
+    orderId: order.orderId,
+    trackingId: order.trackingId,
+    createdAt: order.createdAt,
+    status: getStatusLabel(order.status),
+    subtotal: Number(order.subtotal ?? 0),
+    total: Number(order.total ?? 0),
+  };
+}
+
 function mapOrderRow(order: OrderRow): StoredOrder {
   const items = order.order_items ?? [];
   const address = [
@@ -128,7 +148,6 @@ function mapOrderRow(order: OrderRow): StoredOrder {
     orderId: order.order_number,
     trackingId: order.tracking_code,
     createdAt: order.created_at,
-    rawStatus: order.status,
     status: getStatusLabel(order.status),
     canReuploadPhotos: order.status === 'photos_needed_again',
     accountEmail: order.customer_email,
@@ -165,60 +184,56 @@ function normalizeTrackedOrder(value: unknown): StoredOrder | null {
 }
 
 function cleanFileName(fileName: string) {
-  return (
-    fileName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9.]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'hand-photo.jpg'
-  );
+  return fileName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'hand-photo.jpg';
 }
 
 function makePhotoPath({
   userId,
-  orderId,
+  orderUuid,
   photoType,
   fileName,
 }: {
   userId: string;
-  orderId: string;
+  orderUuid: string;
   photoType: CheckoutPhotoInput['photoType'];
   fileName: string;
 }) {
-  const randomPart =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : String(Date.now());
+  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : String(Date.now());
 
-  return `${userId}/${orderId}/${photoType}-${randomPart}-${cleanFileName(fileName)}`;
+  return `${userId}/${orderUuid}/${photoType}-${randomPart}-${cleanFileName(fileName)}`;
 }
 
 async function uploadHandPhotos({
   userId,
-  orderId,
+  orderUuid,
   photos,
 }: {
   userId: string;
-  orderId: string;
+  orderUuid: string;
   photos: CheckoutPhotoInput[];
 }) {
   if (photos.length === 0) return;
 
   const supabase = createClient();
-
-  const photoRows: Array<{
-    order_id: string;
-    uploaded_by: string;
-    storage_path: string;
-    image_url: null;
-    photo_type: CheckoutPhotoInput['photoType'];
-  }> = [];
+  const photoRows = [];
 
   for (const photo of photos) {
+    const validationError = validateImageFile(photo.file, photo.photoType.replaceAll('_', ' '));
+
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
     const storagePath = makePhotoPath({
       userId,
-      orderId,
+      orderUuid,
       photoType: photo.photoType,
       fileName: photo.file.name,
     });
@@ -232,11 +247,11 @@ async function uploadHandPhotos({
       });
 
     if (uploadError) {
-      throw new Error(uploadError.message);
+      throw new Error('Could not upload hand photos. Please try again.');
     }
 
     photoRows.push({
-      order_id: orderId,
+      order_id: orderUuid,
       uploaded_by: userId,
       storage_path: storagePath,
       image_url: null,
@@ -247,7 +262,7 @@ async function uploadHandPhotos({
   const { error: photoInsertError } = await supabase.from('hand_photos').insert(photoRows);
 
   if (photoInsertError) {
-    throw new Error(photoInsertError.message);
+    throw new Error('Could not save hand photos. Please try again.');
   }
 }
 
@@ -268,6 +283,31 @@ export async function createCheckoutOrder({
     throw new Error('Your cart is empty.');
   }
 
+  if (lines.length > 5) {
+    throw new Error('Please checkout with 5 or fewer set types at once.');
+  }
+
+  const validationError = validateCheckoutFields({
+    customerName: customer.name,
+    customerEmail: customer.email,
+    customerPhone: customer.phone,
+    addressLine1: address.line1,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode,
+    customerNote: note,
+  });
+
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  for (const line of lines) {
+    if (!line.set.id || line.quantity < 1 || line.quantity > 5) {
+      throw new Error('One item in your cart is invalid.');
+    }
+  }
+
   const supabase = createClient();
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -276,70 +316,43 @@ export async function createCheckoutOrder({
     throw new Error('Please login again before checkout.');
   }
 
-  const subtotal = lines.reduce((total, item) => total + item.set.price * item.quantity, 0);
+  const { data, error } = await supabase.rpc('create_checkout_order', {
+    payload: {
+      customer: {
+        name: customer.name.trim(),
+        email: customer.email.trim().toLowerCase(),
+        phone: customer.phone.trim(),
+      },
+      address: {
+        line1: address.line1.trim(),
+        line2: address.line2.trim(),
+        city: address.city.trim(),
+        state: address.state.trim(),
+        postalCode: address.postalCode.trim(),
+        country: address.country.trim() || 'India',
+      },
+      note: note?.trim() || null,
+      items: lines.map((item) => ({
+        productSlug: item.set.id,
+        length: item.length,
+        quantity: item.quantity,
+      })),
+    },
+  });
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      customer_id: authData.user.id,
-      customer_email: customer.email,
-      customer_name: customer.name,
-      customer_phone: customer.phone,
-
-      shipping_name: customer.name,
-      shipping_phone: customer.phone,
-      shipping_address_line1: address.line1,
-      shipping_address_line2: address.line2 || null,
-      shipping_city: address.city,
-      shipping_state: address.state,
-      shipping_postal_code: address.postalCode,
-      shipping_country: address.country,
-
-      subtotal_inr: subtotal,
-      shipping_inr: 0,
-      total_inr: subtotal,
-      currency: 'INR',
-      customer_note: note || null,
-    })
-    .select('id, order_number, tracking_code, created_at, status, subtotal_inr, total_inr')
-    .single();
-
-  if (orderError || !order) {
-    throw new Error(orderError?.message ?? 'Could not create order.');
+  if (error) {
+    throw new Error(error.message || 'Could not create order.');
   }
 
-  const orderItems = lines.map((item) => ({
-    order_id: order.id,
-    product_name: item.set.name,
-    product_slug: item.set.id,
-    design_code: item.set.code,
-    selected_length: item.length,
-    selected_shape: item.set.shape,
-    quantity: item.quantity,
-    unit_price_inr: item.set.price,
-    line_total_inr: item.set.price * item.quantity,
-  }));
-
-  const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
-
-  if (itemsError) {
-    throw new Error(itemsError.message);
-  }
+  const createdOrder = normalizeCreatedCheckoutOrder(data);
 
   await uploadHandPhotos({
     userId: authData.user.id,
-    orderId: order.id,
+    orderUuid: createdOrder.orderUuid,
     photos,
   });
 
-  return {
-    orderId: order.order_number,
-    trackingId: order.tracking_code,
-    createdAt: order.created_at,
-    status: getStatusLabel(order.status),
-    subtotal: order.subtotal_inr,
-    total: order.total_inr,
-  };
+  return createdOrder;
 }
 
 export async function reuploadHandPhotosForOrder({
@@ -353,8 +366,8 @@ export async function reuploadHandPhotosForOrder({
     throw new Error('Missing order ID.');
   }
 
-  if (photos.length === 0) {
-    throw new Error('Please upload new hand photos first.');
+  if (photos.length < 2 || photos.length > 3) {
+    throw new Error('Please upload the required hand photos.');
   }
 
   const supabase = createClient();
@@ -367,96 +380,35 @@ export async function reuploadHandPhotosForOrder({
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, status, customer_id')
+    .select('id, status')
     .eq('id', orderDatabaseId)
     .eq('customer_id', authData.user.id)
     .maybeSingle();
 
-  if (orderError) {
-    throw new Error(orderError.message);
-  }
-
-  if (!order) {
-    throw new Error('Order not found for this account.');
+  if (orderError || !order) {
+    throw new Error('Order not found.');
   }
 
   if (order.status !== 'photos_needed_again') {
-    throw new Error('This order is not currently requesting new photos.');
+    throw new Error('New photos have not been requested for this order.');
   }
 
-  for (const photo of photos) {
-    const storagePath = makePhotoPath({
-      userId: authData.user.id,
-      orderId: orderDatabaseId,
-      photoType: photo.photoType,
-      fileName: photo.file.name,
-    });
-
-    const { error: uploadError } = await supabase.storage
-      .from('hand-photos')
-      .upload(storagePath, photo.file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: photo.file.type || 'image/jpeg',
-      });
-
-    if (uploadError) {
-      throw new Error(uploadError.message);
-    }
-
-    const { data: existingPhoto, error: existingPhotoError } = await supabase
-      .from('hand_photos')
-      .select('id')
-      .eq('order_id', orderDatabaseId)
-      .eq('uploaded_by', authData.user.id)
-      .eq('photo_type', photo.photoType)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingPhotoError) {
-      throw new Error(existingPhotoError.message);
-    }
-
-    if (existingPhoto?.id) {
-      const { error: updateError } = await supabase
-        .from('hand_photos')
-        .update({
-          storage_path: storagePath,
-          image_url: null,
-          review_status: 'pending',
-          admin_note: null,
-          uploaded_by: authData.user.id,
-        })
-        .eq('id', existingPhoto.id);
-
-      if (updateError) {
-        throw new Error(updateError.message);
-      }
-    } else {
-      const { error: insertError } = await supabase.from('hand_photos').insert({
-        order_id: orderDatabaseId,
-        uploaded_by: authData.user.id,
-        storage_path: storagePath,
-        image_url: null,
-        photo_type: photo.photoType,
-        review_status: 'pending',
-        admin_note: null,
-      });
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-    }
-  }
-
-  const { error: statusError } = await supabase.rpc('customer_mark_photos_reuploaded', {
-    target_order_id: orderDatabaseId,
+  await uploadHandPhotos({
+    userId: authData.user.id,
+    orderUuid: order.id,
+    photos,
   });
 
-  if (statusError) {
-    throw new Error(statusError.message);
-  }
+  const { data: markedReuploaded, error: updateError } = await supabase.rpc(
+  'mark_order_photos_reuploaded',
+  {
+    raw_order_id: order.id,
+  },
+);
+
+if (updateError || !markedReuploaded) {
+  throw new Error('Photos uploaded, but order status could not be updated. Please contact the studio.');
+}
 }
 
 export async function getCustomerOrders(): Promise<StoredOrder[]> {
@@ -509,7 +461,7 @@ export async function findTrackedOrder(identifier: string, contact: string): Pro
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error('Could not track this order. Please check the details and try again.');
   }
 
   return normalizeTrackedOrder(data);
