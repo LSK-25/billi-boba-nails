@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import ProductCard from '@/components/ProductCard';
-import CatEyePreview from '@/components/CatEyePreview';
+import PreviewMediaShowcase from '@/components/PreviewMediaShowcase';;
 import { nailSets } from '@/lib/mock-data';
 
 export default function Home() {
@@ -112,7 +112,7 @@ export default function Home() {
         </div>
       </section>
 
-      <CatEyePreview />
+      <PreviewMediaShowcase />
     </>
   );
 }

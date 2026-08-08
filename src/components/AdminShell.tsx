@@ -10,6 +10,7 @@ const adminNav = [
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/products/new', label: 'Add set' },
   { href: '/admin/orders', label: 'Orders' },
+  { href: '/admin/media', label: 'Preview media' },
 ];
 
 type AdminShellProps = {
