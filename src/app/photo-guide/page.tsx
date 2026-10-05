@@ -132,7 +132,7 @@ export default function PhotoGuidePage() {
         <div className="liquid-glass mt-8 overflow-hidden rounded-[2.4rem] p-3 sm:p-4 md:p-5">
           <div className="relative overflow-hidden rounded-[2rem] bg-white">
             <Image
-              src="/images/photo-guide-examples-v2.png"
+              src="/images/photo-guide-examples.png"
               alt="Correct and wrong hand photo examples for BILLi&BoBA nail sizing"
               width={1536}
               height={1024}
