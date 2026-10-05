@@ -1,6 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { NailSet, PreferredLength } from '@/types';
-import { nailSets } from '@/lib/mock-data';
 
 type ProductImageRow = {
   image_url: string | null;
@@ -149,7 +148,10 @@ function mapProductRow(row: ProductRow, index = 0): NailSet {
 export async function getActiveProducts(): Promise<NailSet[]> {
   const supabase = getSupabaseProductClient();
 
-  if (!supabase) return nailSets;
+  if (!supabase) {
+    console.error('Supabase product client is not configured.');
+    return [];
+  }
 
   const { data, error } = await supabase
     .from('products')
@@ -158,18 +160,20 @@ export async function getActiveProducts(): Promise<NailSet[]> {
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false });
 
-  if (error || !data?.length) {
-    return nailSets;
+  if (error) {
+    console.error('Failed to load active products:', error.message);
+    return [];
   }
 
-  return data.map((row, index) => mapProductRow(row as ProductRow, index));
+  return (data ?? []).map((row, index) => mapProductRow(row as ProductRow, index));
 }
 
 export async function getActiveProductBySlug(slug: string): Promise<NailSet | null> {
   const supabase = getSupabaseProductClient();
 
   if (!supabase) {
-    return nailSets.find((set) => set.id === slug) ?? null;
+    console.error('Supabase product client is not configured.');
+    return null;
   }
 
   const { data, error } = await supabase
@@ -179,9 +183,12 @@ export async function getActiveProductBySlug(slug: string): Promise<NailSet | nu
     .eq('status', 'active')
     .maybeSingle();
 
-  if (error || !data) {
-    return nailSets.find((set) => set.id === slug) ?? null;
+  if (error) {
+    console.error(`Failed to load product "${slug}":`, error.message);
+    return null;
   }
+
+  if (!data) return null;
 
   return mapProductRow(data as ProductRow);
 }
