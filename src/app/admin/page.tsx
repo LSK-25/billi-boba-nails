@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AdminShell from '@/components/AdminShell';
-import { getAdminOrders, type AdminOrder } from '@/lib/admin-orders';
-import { productSummary } from '@/lib/admin-data';
+import { getAdminOrders, resetAdminTestOrders, type AdminOrder } from '@/lib/admin-orders';
+import { getAdminProducts, type AdminProduct } from '@/lib/admin-products';
 import { formatPrice } from '@/lib/utils';
 
 const quickActions = [
@@ -15,14 +15,18 @@ const quickActions = [
 
 export default function AdminPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
 
   useEffect(() => {
     let active = true;
 
-    getAdminOrders().then((nextOrders) => {
+    Promise.all([getAdminOrders(), getAdminProducts()]).then(([nextOrders, nextProducts]) => {
       if (!active) return;
       setOrders(nextOrders);
+      setProducts(nextProducts);
       setLoading(false);
     });
 
@@ -37,22 +41,67 @@ export default function AdminPage() {
     const productionQueue = orders.filter((order) =>
       ['order_confirmed', 'photos_under_review', 'in_production', 'quality_check'].includes(order.status),
     ).length;
-    const revenue = orders.reduce((total, order) => total + order.totals.total, 0);
+    const pendingValue = orders
+      .filter((order) => order.paymentStatus === 'pending')
+      .reduce((total, order) => total + order.totals.total, 0);
 
     return [
       { label: 'Total orders', value: String(orders.length), note: loading ? 'Loading Supabase orders.' : 'Real customer orders.' },
       { label: 'Photo review', value: String(photoReviews), note: 'Orders needing photo check.' },
       { label: 'Production queue', value: String(productionQueue), note: 'Active orders before dispatch.' },
-      { label: 'Pending payment', value: String(pendingPayments), note: `Order value ${formatPrice(revenue)}.` },
+      { label: 'Pending payment', value: String(pendingPayments), note: `Pending value ${formatPrice(pendingValue)}.` },
     ];
   }, [orders, loading]);
+
+  async function handleResetTestOrders() {
+    const confirmed = window.confirm(
+      'Delete every current test order from the dashboard? This removes order records, status history and uploaded hand photos. Products and preview media will stay unchanged.',
+    );
+
+    if (!confirmed) return;
+
+    setResetting(true);
+    setResetMessage('');
+
+    try {
+      const deletedCount = await resetAdminTestOrders();
+      setOrders([]);
+      setResetMessage(
+        deletedCount === 0
+          ? 'Dashboard is already clear.'
+          : `${deletedCount} test order${deletedCount === 1 ? '' : 's'} removed.`,
+      );
+    } catch (error) {
+      setResetMessage(error instanceof Error ? error.message : 'Could not reset test orders.');
+    } finally {
+      setResetting(false);
+    }
+  }
 
   return (
     <AdminShell
       title="Studio dashboard"
       description="A clean owner workspace for managing BILLi&BoBA sets, real customer orders, hand photo review, production and tracking."
-      action={<Link href="/admin/products/new" className="btn-primary w-fit">Add new set</Link>}
+      action={
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleResetTestOrders}
+            disabled={resetting}
+            className="rounded-full border border-[#d989a4]/45 bg-white/60 px-5 py-3 text-sm font-black text-[#9b3f63] transition hover:bg-[#fff0f5] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {resetting ? 'Resetting...' : 'Reset test orders'}
+          </button>
+          <Link href="/admin/products/new" className="btn-primary w-fit">Add new set</Link>
+        </div>
+      }
     >
+      {resetMessage && (
+        <div className="mb-5 rounded-[1.35rem] border border-white/60 bg-white/55 px-4 py-3 text-sm font-bold text-[#6f5874]">
+          {resetMessage}
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-4">
         {metrics.map((card) => (
           <div key={card.label} className="liquid-glass rounded-[2rem] p-5">
@@ -130,15 +179,30 @@ export default function AdminPage() {
               <Link href="/admin/products" className="text-sm font-black text-[#6d3fb1]">Open →</Link>
             </div>
             <div className="mt-5 grid gap-3">
-              {productSummary.slice(0, 3).map((set) => (
-                <div key={set.id} className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-white/55 bg-white/38 p-4">
-                  <div>
-                    <p className="font-black text-[#34263c]">{set.name}</p>
-                    <p className="text-xs font-bold text-[#8a728d]">{set.code} • {set.status}</p>
-                  </div>
-                  <p className="font-black text-[#6d3fb1]">{formatPrice(set.price)}</p>
+              {loading ? (
+                <div className="rounded-[1.35rem] border border-white/55 bg-white/38 p-4">
+                  <p className="text-sm font-bold text-[#8a728d]">Loading collection...</p>
                 </div>
-              ))}
+              ) : products.length === 0 ? (
+                <div className="rounded-[1.35rem] border border-white/55 bg-white/38 p-4">
+                  <p className="font-black text-[#34263c]">No products yet.</p>
+                  <p className="mt-1 text-xs font-bold text-[#8a728d]">Add your first real nail set to populate collection health.</p>
+                </div>
+              ) : (
+                products.slice(0, 3).map((set) => {
+                  const statusLabel = set.status === 'archived' ? 'Archived' : set.isFeatured ? 'Featured' : 'Active';
+
+                  return (
+                    <div key={set.id} className="flex items-center justify-between gap-3 rounded-[1.35rem] border border-white/55 bg-white/38 p-4">
+                      <div>
+                        <p className="font-black text-[#34263c]">{set.name}</p>
+                        <p className="text-xs font-bold text-[#8a728d]">{set.designCode || 'No code'} • {statusLabel}</p>
+                      </div>
+                      <p className="font-black text-[#6d3fb1]">{formatPrice(set.priceInr)}</p>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
