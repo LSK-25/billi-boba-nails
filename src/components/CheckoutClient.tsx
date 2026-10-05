@@ -582,7 +582,7 @@ export default function CheckoutClient() {
                       </h3>
 
                       <p className="mt-2 text-sm font-bold text-[#6d5871]">
-                        {item.length} â€¢ Qty {item.quantity}
+                        {item.length} • Qty {item.quantity}
                       </p>
                     </div>
 

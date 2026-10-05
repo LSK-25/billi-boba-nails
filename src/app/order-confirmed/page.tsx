@@ -39,7 +39,7 @@ export default function OrderConfirmedPage() {
             <p className="mt-5 max-w-xl text-base leading-8 text-[#756778]">
               {loading
                 ? 'Loading your order details...'
-                : 'Your order is saved in the BILLi&BoBA database. Payment status stays pending until Razorpay is connected.'}
+                : 'Payment confirmed. Your order is now with the BILLi&BoBA studio for hand-photo review.'}
             </p>
 
             <div className="mt-7 grid gap-3 rounded-[1.8rem] border border-white/60 bg-white/48 p-5 backdrop-blur-2xl">

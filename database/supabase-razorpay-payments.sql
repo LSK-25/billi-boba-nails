@@ -81,3 +81,10 @@ revoke all on function public.mark_razorpay_payment_paid(text, text, text, text)
 
 grant execute on function public.attach_razorpay_order(text, text) to authenticated;
 grant execute on function public.mark_razorpay_payment_paid(text, text, text, text) to authenticated;
+
+-- Prevent one Razorpay payment from being attached
+-- to more than one BILLi&BoBA order.
+create unique index if not exists
+orders_razorpay_payment_id_unique_idx
+on public.orders(razorpay_payment_id)
+where razorpay_payment_id is not null;

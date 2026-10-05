@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 type OrderItemRow = {
   product_name: string;
@@ -268,7 +268,7 @@ export async function sendOrderPaymentEmails(orderNumber: string) {
     return;
   }
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminSupabaseClient();
 
   const { data, error } = await supabase
     .from('orders')
