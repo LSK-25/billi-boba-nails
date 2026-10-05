@@ -2,10 +2,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ProductCard from '@/components/ProductCard';
 import PreviewMediaShowcase from '@/components/PreviewMediaShowcase';;
-import { nailSets } from '@/lib/mock-data';
+import { getActiveProducts } from '@/lib/products';
 
-export default function Home() {
-  const featuredSets = nailSets.filter((set) => set.featured).slice(0, 4);
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const products = await getActiveProducts();
+  const featuredSets = products.filter((set) => set.featured).slice(0, 4);
 
   return (
     <>
