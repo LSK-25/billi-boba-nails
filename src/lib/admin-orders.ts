@@ -435,3 +435,50 @@ export async function updateAdminPhotoReview({
     note: cleanNote || 'Requested new hand photos from customer.',
   });
 }
+
+type ResetOrderRow = {
+  id: string;
+  hand_photos: { storage_path: string | null }[] | null;
+};
+
+export async function resetAdminTestOrders(): Promise<number> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, hand_photos(storage_path)');
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as ResetOrderRow[];
+  const orderIds = rows.map((order) => order.id);
+  const storagePaths = rows
+    .flatMap((order) => order.hand_photos ?? [])
+    .map((photo) => photo.storage_path)
+    .filter((path): path is string => Boolean(path));
+
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from('hand-photos')
+      .remove(storagePaths);
+
+    if (storageError) {
+      throw new Error(storageError.message);
+    }
+  }
+
+  if (orderIds.length === 0) return 0;
+
+  const { error: deleteError } = await supabase
+    .from('orders')
+    .delete()
+    .in('id', orderIds);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  return orderIds.length;
+}
