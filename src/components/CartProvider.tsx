@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { nailSets } from '@/lib/mock-data';
 import type { CartItem, CartLine, NailSet, PreferredLength } from '@/types';
 
 const CART_STORAGE_KEY = 'billi-boba-cart-v1';
@@ -37,7 +36,8 @@ function parseStoredCart(value: string | null): CartItem[] {
         typeof item.setId === 'string' &&
         typeof item.length === 'string' &&
         typeof item.quantity === 'number' &&
-        item.quantity > 0
+        item.quantity > 0 &&
+        Boolean(item.setSnapshot)
       );
     });
   } catch {
@@ -71,7 +71,7 @@ export default function CartProvider({ children }: { children: ReactNode }) {
   const lines = useMemo(() => {
     return items
       .map((item) => {
-        const set = item.setSnapshot ?? nailSets.find((nailSet) => nailSet.id === item.setId);
+        const set = item.setSnapshot;
         return set ? { ...item, set } : null;
       })
       .filter(Boolean) as CartLine[];
