@@ -5,7 +5,8 @@ export function createAdminSupabaseClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SECRET_KEY ??
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl) {
     throw new Error(
@@ -14,10 +15,10 @@ export function createAdminSupabaseClient() {
   }
 
   if (!serviceRoleKey) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY.',
-    );
-  }
+  throw new Error(
+    'Missing Supabase server secret.',
+  );
+}
 
   return createClient(
     supabaseUrl,
